@@ -36,6 +36,25 @@ func run() -> void:
 		await physics_frame
 	assert(drive.pedestrians[5]._crossing_active)
 	assert(drive._events.any(func(event): return event.get("type") == "pedestrian_crossing"))
+	assert(drive.sedan.contact_monitor and drive.sedan.max_contacts_reported >= 8)
+	drive._on_sedan_body_entered(drive.pedestrians[0])
+	assert(drive.pedestrians[0].fallen)
+	assert(drive._events.filter(func(event): return event.get("type") == "pedestrian_collision").size() == 1)
+	drive._on_sedan_body_entered(drive.pedestrians[0])
+	assert(drive._events.filter(func(event): return event.get("type") == "pedestrian_collision").size() == 1)
+	for index in 20:
+		await physics_frame
+	assert(drive.pedestrians[0]._visual.rotation.length() > 0.5)
+	drive._on_sedan_body_entered(drive.traffic[0])
+	drive._on_sedan_body_entered(drive.traffic[0])
+	assert(drive._events.filter(func(event): return event.get("type") == "vehicle_collision").size() == 1)
+	var before_stop_events: int = drive._events.size()
+	drive._evaluate_market_stop(Vector3(-202, 0, -21), Vector3(-202, 0, -20), 0.0)
+	drive._evaluate_market_stop(Vector3(-202, 0, -10), Vector3(-202, 0, -8), 4.0)
+	assert(drive._events.size() == before_stop_events)
+	drive._evaluate_market_stop(Vector3(-202, 0, -50), Vector3(-202, 0, -49), 4.0)
+	drive._evaluate_market_stop(Vector3(-202, 0, -10), Vector3(-202, 0, -8), 4.0)
+	assert(drive._events.filter(func(event): return event.get("type") == "stop_line_missed").size() == 1)
 	# Ending the drive without visiting the venue is a valid exploratory result.
 	drive._end_drive()
 	assert(app._page == "result")

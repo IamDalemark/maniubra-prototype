@@ -10,6 +10,7 @@ const ROAD_WIDTH := 8.5
 const START := Vector3(-201.8, 0.05, -225.0)
 const DESTINATION := Vector3(211.0, 0.05, 221.0)
 const DESTINATION_SIZE := Vector2(10.0, 13.0)
+const MARKET_STOP_Z := -9.0
 
 
 func _ready() -> void:
@@ -82,6 +83,18 @@ func _build_roads() -> void:
 				for stripe in 5:
 					_box(Vector3(0.48, 0.014, 0.58), Vector3(x + side * (6.2 + stripe * 0.86), 0.03, z - 7.6), Color("f4f0df"), false)
 	_build_roundabout()
+	# A marked stop-controlled approach on the northbound market street.
+	_box(Vector3(4.1, 0.018, 0.36), Vector3(-202.05, 0.04, MARKET_STOP_Z), Color("f5f2e7"), false)
+	_box(Vector3(0.12, 1.10, 0.12), Vector3(-208.0, 0.57, -12.0), Color("596466"), false)
+	_box(Vector3(1.20, 1.20, 0.12), Vector3(-208.0, 1.73, -12.0), Color("c3483d"), false)
+	var stop_label := Label3D.new()
+	stop_label.text = "STOP"
+	stop_label.font_size = 80
+	stop_label.pixel_size = 0.004
+	stop_label.modulate = Color.WHITE
+	stop_label.position = Vector3(-208.0, 1.73, -12.08)
+	stop_label.rotation.y = PI
+	add_child(stop_label)
 
 
 func _build_roundabout() -> void:

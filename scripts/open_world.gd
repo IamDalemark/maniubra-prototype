@@ -26,7 +26,11 @@ var _hud: Label
 var _venue: Label
 var _toast: PanelContainer
 var _toast_label: Label
+var _toast_style: StyleBoxFlat
 var _toast_remaining := 0.0
+var _last_sedan_pos := Vector3.ZERO
+var _stop_satisfied := false
+var _last_contact_at: Dictionary = {}
 var _pause_center: CenterContainer
 var _pause_buttons: VBoxContainer
 
@@ -54,6 +58,9 @@ func start_attempt(context: Dictionary) -> void:
 	_paused = false
 	_toast.visible = false
 	_toast_remaining = 0.0
+	_last_sedan_pos = sedan.global_position
+	_stop_satisfied = false
+	_last_contact_at.clear()
 	_venue.text = "OPTIONAL DESTINATION\n" + VENUE_NAME
 	sedan.camera.fov = clampf(float(context.get("camera_fov", 75.0)), 60.0, 95.0)
 	sedan.set_audio_level(float(context.get("audio_level", 0.8)))
@@ -67,6 +74,8 @@ func _physics_process(delta: float) -> void:
 	if not _started or _paused:
 		return
 	_elapsed += delta
+	_evaluate_market_stop(_last_sedan_pos, sedan.global_position, sedan.speed_mps())
+	_last_sedan_pos = sedan.global_position
 	if not _venue_reached:
 		if district.destination_contains_vehicle(sedan) and sedan.speed_mps() < 0.5 / 3.6:
 			_arrival_hold += delta
@@ -100,9 +109,7 @@ func _award_destination() -> void:
 	_venue_reached = true
 	_venue.text = "EXPLORE ILOILO"
 	_events.append({"type": "destination_reached", "venue_id": "molo_plaza", "elapsed_seconds": snappedf(_elapsed, 0.01), "detail": "Reached Molo Plaza and stopped in the marked bay."})
-	_toast_label.text = "DESTINATION REACHED\nMolo Explorer badge earned"
-	_toast_remaining = 4.0
-	_toast.visible = true
+	_show_toast("DESTINATION REACHED", "Molo Explorer badge earned", false)
 
 
 func _on_engine_state_changed(running: bool, stalled: bool) -> void:
@@ -110,6 +117,79 @@ func _on_engine_state_changed(running: bool, stalled: bool) -> void:
 		return
 	var detail := "Engine stalled." if stalled else ("Engine started." if running else "Engine switched off.")
 	_events.append({"type": "engine_stalled" if stalled else ("engine_started" if running else "engine_stopped"), "elapsed_seconds": snappedf(_elapsed, 0.01), "detail": detail})
+	if stalled:
+		_show_toast("ENGINE STALLED", "Hold C and press H to restart.", true)
+
+
+func _on_shift_rejected() -> void:
+	if not _started or _paused:
+		return
+	_record_error("shift_rejected", "SHIFT ERROR", "Depress the clutch before shifting.")
+
+
+func _on_ignition_rejected() -> void:
+	if not _started or _paused:
+		return
+	_record_error("ignition_rejected", "START BLOCKED", "Hold C or select neutral before starting.")
+
+
+func _on_sedan_body_entered(body: Node) -> void:
+	if not _started or _paused:
+		return
+	var event_type := ""
+	var title := ""
+	var detail := ""
+	if body in pedestrians:
+		if body.fallen:
+			return
+		event_type = "pedestrian_collision"
+		title = "PEDESTRIAN HIT"
+		detail = "Stop and watch for people near the road."
+		var impact: Vector3 = sedan.linear_velocity
+		if impact.length_squared() < 0.5:
+			impact = body.global_position - sedan.global_position
+		body.fall(impact)
+	elif body in traffic:
+		event_type = "vehicle_collision"
+		title = "VEHICLE COLLISION"
+		detail = "Slow down and leave more space around traffic."
+	elif body.name.begins_with("VendorObstacle"):
+		event_type = "roadside_collision"
+		title = "ROADSIDE OBSTRUCTION"
+		detail = "Slow down and steer clear of roadside stalls."
+	else:
+		return
+	var contact_id := body.get_instance_id()
+	if _elapsed - float(_last_contact_at.get(contact_id, -100.0)) < 2.5:
+		return
+	_last_contact_at[contact_id] = _elapsed
+	_record_error(event_type, title, detail)
+
+
+func _evaluate_market_stop(previous: Vector3, current: Vector3, speed: float) -> void:
+	if current.z < -40.0:
+		_stop_satisfied = false
+	var in_approach: bool = current.x > -205.0 and current.x < -200.0 and current.z >= -29.0 and current.z < district.MARKET_STOP_Z
+	if in_approach and speed < 0.5 / 3.6:
+		_stop_satisfied = true
+	var crossed: bool = previous.z < district.MARKET_STOP_Z and current.z >= district.MARKET_STOP_Z and current.z > previous.z
+	if crossed and current.x > -205.0 and current.x < -200.0:
+		if not _stop_satisfied:
+			_record_error("stop_line_missed", "STOP LINE MISSED", "Stop before the marked market junction line.")
+		_stop_satisfied = false
+
+
+func _record_error(event_type: String, title: String, detail: String) -> void:
+	_events.append({"type": event_type, "elapsed_seconds": snappedf(_elapsed, 0.01), "detail": detail})
+	_show_toast(title, detail, true)
+
+
+func _show_toast(title: String, detail: String, error: bool) -> void:
+	_toast_label.text = ("!  " if error else "") + title + "\n" + detail
+	_toast_label.modulate = Color("f4e3d3") if error else Color("f5dc88")
+	_toast_style.border_color = Color("e47957") if error else Color("f5c548")
+	_toast_remaining = 4.5 if error else 4.0
+	_toast.visible = true
 
 
 func _end_drive() -> void:
@@ -154,7 +234,12 @@ func _spawn_sedan() -> void:
 	sedan = SEDAN.instantiate()
 	sedan.position = district.START
 	add_child(sedan)
+	sedan.contact_monitor = true
+	sedan.max_contacts_reported = 16
+	sedan.body_entered.connect(_on_sedan_body_entered)
 	sedan.engine_state_changed.connect(_on_engine_state_changed)
+	sedan.shift_rejected.connect(_on_shift_rejected)
+	sedan.ignition_rejected.connect(_on_ignition_rejected)
 
 
 func _spawn_traffic() -> void:
@@ -286,11 +371,11 @@ func _build_ui() -> void:
 	_toast.offset_top = 24.0
 	_toast.offset_bottom = 115.0
 	_toast.visible = false
-	var toast_style := StyleBoxFlat.new()
-	toast_style.bg_color = Color("142629")
-	toast_style.border_color = Color("f5c548")
-	toast_style.border_width_left = 5
-	_toast.add_theme_stylebox_override("panel", toast_style)
+	_toast_style = StyleBoxFlat.new()
+	_toast_style.bg_color = Color("142629")
+	_toast_style.border_color = Color("f5c548")
+	_toast_style.border_width_left = 5
+	_toast.add_theme_stylebox_override("panel", _toast_style)
 	layer.add_child(_toast)
 	_toast_label = _label(18, Color("f5dc88"))
 	_toast.add_child(_toast_label)
