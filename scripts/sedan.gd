@@ -3,6 +3,8 @@ extends VehicleBody3D
 
 signal shift_rejected
 signal gear_changed(gear: int)
+signal engine_state_changed(running: bool, stalled: bool)
+signal ignition_rejected
 
 const DrivingInput = preload("res://scripts/driving_input.gd")
 const ManualTransmission = preload("res://scripts/manual_transmission.gd")
@@ -62,6 +64,11 @@ func _physics_process(delta: float) -> void:
 		brake = 36.0
 		return
 	controls.update(delta)
+	if Input.is_action_just_pressed("drive_ignition"):
+		_toggle_ignition()
+	if gearbox.update_stall(controls.throttle, controls.clutch, controls.brake, speed_mps(), delta):
+		_sync_engine_audio()
+		engine_state_changed.emit(false, true)
 	var steering_limit := lerpf(0.42, 0.25, clampf(speed_mps() / 25.0, 0.0, 1.0))
 	steering = controls.steering * steering_limit
 	engine_force = gearbox.drive_force(controls.throttle, controls.clutch)
@@ -71,7 +78,7 @@ func _physics_process(delta: float) -> void:
 	_lever.rotation.x = float(gearbox.gear) * 0.06
 	_update_hands(delta)
 	_speed_needle.rotation.z = -2.2 + minf(speed_mps() * 3.6 / 120.0, 1.0) * 4.4
-	_rpm_needle.rotation.z = -2.2 + (gearbox.engine_rpm - gearbox.IDLE_RPM) / (gearbox.REDLINE_RPM - gearbox.IDLE_RPM) * 4.4
+	_rpm_needle.rotation.z = -2.2 + clampf((gearbox.engine_rpm - gearbox.IDLE_RPM) / (gearbox.REDLINE_RPM - gearbox.IDLE_RPM), 0.0, 1.0) * 4.4
 	_gear_display.text = "R" if gearbox.gear == -1 else ("N" if gearbox.gear == 0 else str(gearbox.gear))
 	if _engine_audio != null:
 		_engine_audio.pitch_scale = 0.72 + (gearbox.engine_rpm - gearbox.IDLE_RPM) / (gearbox.REDLINE_RPM - gearbox.IDLE_RPM) * 1.45
@@ -115,6 +122,23 @@ func prepare_mouse_capture() -> void:
 func set_audio_level(level: float) -> void:
 	audio_level = clampf(level, 0.0, 1.0)
 	_update_audio_mix()
+
+
+func _toggle_ignition() -> void:
+	if gearbox.toggle_ignition(controls.clutch):
+		_sync_engine_audio()
+		engine_state_changed.emit(gearbox.engine_running, false)
+	else:
+		ignition_rejected.emit()
+
+
+func _sync_engine_audio() -> void:
+	if _engine_audio == null:
+		return
+	if gearbox.engine_running and not _engine_audio.playing:
+		_engine_audio.play()
+	elif not gearbox.engine_running and _engine_audio.playing:
+		_engine_audio.stop()
 
 
 func _update_audio_mix() -> void:
@@ -418,7 +442,7 @@ func _build_audio() -> void:
 	_road_audio.stream = road_stream
 	add_child(_road_audio)
 	set_audio_level(audio_level)
-	_engine_audio.play()
+	_sync_engine_audio()
 	_road_audio.play()
 
 

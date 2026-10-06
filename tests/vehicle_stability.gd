@@ -36,6 +36,7 @@ func _run_corner(acceleration_frames: int) -> Dictionary:
 	var car = load("res://scenes/vehicles/sedan.tscn").instantiate()
 	car.position = Vector3(0, -0.05, 0)
 	world.add_child(car)
+	car._toggle_ignition()
 	car.gearbox.gear = 1
 	Input.action_press("drive_throttle")
 	for index in acceleration_frames:

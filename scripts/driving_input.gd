@@ -21,6 +21,7 @@ static func install_actions() -> void:
 	_key("drive_gear_up", KEY_E)
 	_key("drive_gear_down", KEY_Q)
 	_key("drive_reset", KEY_R)
+	_key("drive_ignition", KEY_H)
 	_axis("drive_left", JOY_AXIS_LEFT_X, -1.0)
 	_axis("drive_right", JOY_AXIS_LEFT_X, 1.0)
 	_axis("drive_throttle", JOY_AXIS_TRIGGER_RIGHT, 1.0)

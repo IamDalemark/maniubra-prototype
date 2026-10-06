@@ -19,7 +19,7 @@ const LESSON_ART = {
 	"overtaking": "lane_changing", "lane_positioning": "lane_changing",
 }
 const LESSON_SUMMARY = {
-	"manual_basics": "Clutch, shift, steer, stop, and reverse.",
+	"manual_basics": "Start the engine, clutch, shift, steer, stop, and reverse.",
 	"secondary_basics": "Signals, lights, wipers, horn, and hazards.",
 	"parking": "Practice precise placement and clearance.",
 	"reversing": "Back up with control and observation.",
@@ -298,7 +298,7 @@ func _show_briefing(lesson_id: String) -> void:
 		_add_text("This lesson is not available yet.", 18, Color("e5c98c"))
 		_add_button("Start lesson — coming soon", func(): pass).disabled = true
 	else:
-		_add_text("Controls: W throttle · S brake · A/D steer · hold C clutch · E/Q gears · Space handbrake · mouse look · Esc pause.\nReach each practice goal, then review your result.", 17, Color("d4e7d6"))
+		_add_text("Controls: H engine · W throttle · S brake · A/D steer · hold C clutch · E/Q gears · Space handbrake · mouse look · Esc pause.\nReach each practice goal, then review your result.", 17, Color("d4e7d6"))
 		var previous := AttemptStore.load_attempts()
 		var same_count := 0
 		for attempt in previous:
@@ -355,7 +355,8 @@ func _clear_session() -> void:
 
 func _show_result(saved: bool) -> void:
 	_clear_page("result", "Drive complete", _last_result.get("feedback", ""))
-	_add_text("7 / 7 STEPS COMPLETE     •     %.1f SECONDS     •     %d REJECTED SHIFTS" % [_last_result.get("elapsed_seconds", 0.0), _last_result.get("shift_errors", 0)], 18, Color("f5c548"))
+	var steps: int = int(_last_result.get("step_count", 8))
+	_add_text("%d / %d STEPS COMPLETE     •     %.1f SECONDS     •     %d REJECTED SHIFTS     •     %d STALLS" % [steps, steps, _last_result.get("elapsed_seconds", 0.0), _last_result.get("shift_errors", 0), _last_result.get("stall_count", 0)], 18, Color("f5c548"))
 	_add_text("What happened", 24, Color("f8f9f2"))
 	for event in _last_result.get("events", []):
 		if not event is Dictionary:
@@ -363,7 +364,9 @@ func _show_result(saved: bool) -> void:
 		var when := "%.1fs" % float(event.get("elapsed_seconds", 0.0))
 		if event.get("type") == "step_completed":
 			_add_text("✓  %s  ·  Step %d — %s" % [when, int(event.get("step", 0)) + 1, event.get("detail", "")], 16, Color("a9dfba"))
-		elif event.get("type") == "shift_rejected":
+		elif event.get("type") == "engine_started":
+			_add_text("✓  %s  ·  %s" % [when, event.get("detail", "")], 16, Color("a9dfba"))
+		else:
 			_add_text("!  %s  ·  %s" % [when, event.get("detail", "")], 16, Color("ffd27e"))
 	if not saved:
 		_add_text("The attempt could not be saved on this Mac.", 17, Color("e5c98c"))

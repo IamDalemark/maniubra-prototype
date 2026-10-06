@@ -1,22 +1,23 @@
 extends Node3D
-## A repeatable manual-driving exercise in a small explorable street district.
+## A repeatable manual-driving exercise in an enclosed training lot.
 
 signal attempt_finished(result: Dictionary)
 signal exit_requested
 
 const SEDAN_SCENE = preload("res://scenes/vehicles/sedan.tscn")
 const SHOPFRONT_SCENE = preload("res://scenes/props/shopfront.tscn")
-const STREETLAMP_SCENE = preload("res://scenes/props/streetlamp.tscn")
-const MARKET_STALL_SCENE = preload("res://scenes/props/market_stall.tscn")
 const PALM_SCENE = preload("res://scenes/props/palm.tscn")
 const JEEPNEY_SCENE = preload("res://scenes/props/jeepney.tscn")
 const TRICYCLE_SCENE = preload("res://scenes/props/tricycle.tscn")
+const TRAFFIC_CONE_SCENE = preload("res://scenes/props/traffic_cone.tscn")
+const SPAWN_POSITION := Vector3(-2.7, 0.02, -85.0)
 const STEP_TEXT = [
+	"Press H to start the engine while the gearbox is in neutral.",
 	"Hold C to depress the clutch, then press E to select first gear.",
 	"Release C, hold W, and travel forward past 8 km/h.",
 	"Depress C and press E to shift into second gear.",
-	"Steer with A/D while moving to change your position in the yard.",
-	"Brake with S until the sedan comes to a full stop.",
+	"Steer with A/D while moving to change your position in the lot.",
+	"Hold C and brake with S until the sedan comes to a full stop.",
 	"Hold Space to apply the handbrake while stopped.",
 	"Release Space, hold C, press Q three times for reverse, then back up 3 m.",
 ]
@@ -42,9 +43,9 @@ var _context: Dictionary = {}
 func _ready() -> void:
 	_build_yard()
 	sedan = SEDAN_SCENE.instantiate()
-	sedan.position = Vector3(-2.7, -0.05, -42)
+	sedan.position = SPAWN_POSITION
 	add_child(sedan)
-	sedan.shift_rejected.connect(_on_shift_rejected)
+	_connect_sedan_signals()
 	_build_ui()
 	_update_ui()
 
@@ -75,27 +76,30 @@ func _physics_process(delta: float) -> void:
 	var speed: float = sedan.speed_mps()
 	match _step:
 		0:
+			if sedan.gearbox.engine_running:
+				_advance("Engine started with H.")
+		1:
 			if sedan.gearbox.gear == 1:
 				_advance("First gear selected with the clutch depressed.")
-		1:
+		2:
 			if speed > 2.22 and sedan.global_position.z > _start_z + 4.0 and sedan.controls.clutch < 0.2:
 				_advance("You moved forward under engine power.")
-		2:
+		3:
 			if sedan.gearbox.gear == 2:
 				_steer_x = sedan.global_position.x
 				_advance("Second gear selected with the clutch depressed.")
-		3:
+		4:
 			if speed > 1.0 and absf(sedan.global_position.x - _steer_x) > 1.8:
 				_advance("You changed position while moving.")
-		4:
-			if sedan.controls.brake > 0.5 and speed < 0.35:
-				_advance("You brought the sedan to a full stop with the brake.")
 		5:
+			if sedan.controls.brake > 0.5 and sedan.controls.clutch > 0.65 and speed < 0.35:
+				_advance("You brought the sedan to a full stop with the brake.")
+		6:
 			if sedan.controls.handbrake and speed < 0.35:
 				_reverse_z = sedan.global_position.z
 				_advance("Handbrake applied while stopped.")
-		6:
-			if sedan.gearbox.gear == -1 and sedan.global_position.z < _reverse_z - 3.0:
+		7:
+			if sedan.gearbox.engine_running and sedan.gearbox.gear == -1 and sedan.global_position.z < _reverse_z - 3.0:
 				_advance("You reversed at least three metres.")
 	_update_ui()
 
@@ -126,6 +130,23 @@ func _on_shift_rejected() -> void:
 	_last_notice = "Depress the clutch before shifting."
 
 
+func _on_engine_state_changed(running: bool, stalled: bool) -> void:
+	if not _started or _paused:
+		return
+	var event_type := "engine_stalled" if stalled else ("engine_started" if running else "engine_stopped")
+	var detail := "Engine stalled. Hold C and press H to restart." if stalled else ("Engine started." if running else "Engine switched off with H.")
+	_events.append({"type": event_type, "elapsed_seconds": snappedf(_elapsed, 0.01), "detail": detail})
+	_last_notice = detail
+
+
+func _on_ignition_rejected() -> void:
+	if not _started or _paused:
+		return
+	var detail := "Hold C or select neutral before starting the engine."
+	_events.append({"type": "ignition_rejected", "elapsed_seconds": snappedf(_elapsed, 0.01), "detail": detail})
+	_last_notice = detail
+
+
 func _finish() -> void:
 	_started = false
 	sedan.driving_enabled = false
@@ -135,15 +156,21 @@ func _finish() -> void:
 		if event["type"] == "shift_rejected":
 			mistakes += 1
 	var result := _context.duplicate(true)
-	result["scenario_version"] = 1
-	result["assessment_version"] = 1
+	result["scenario_version"] = 2
+	result["assessment_version"] = 2
+	result["step_count"] = STEP_TEXT.size()
 	result["unix_time"] = Time.get_unix_time_from_system()
 	result["completed"] = true
 	result["elapsed_seconds"] = snappedf(_elapsed, 0.1)
 	result["shift_errors"] = mistakes
+	var stalls := 0
+	for event in _events:
+		if event["type"] == "engine_stalled":
+			stalls += 1
+	result["stall_count"] = stalls
 	result["input_profile_id"] = sedan.controls.last_device
 	result["events"] = _events.duplicate(true)
-	result["feedback"] = "Completed all seven control steps." + (" Practice clutch timing: %d shifts were rejected." % mistakes if mistakes else " No gear changes were rejected.")
+	result["feedback"] = "Completed all eight control steps." + (" Practice clutch timing: %d shifts were rejected." % mistakes if mistakes else " No gear changes were rejected.") + (" The engine stalled %d time(s)." % stalls if stalls else " No engine stalls.")
 	attempt_finished.emit(result)
 
 
@@ -153,10 +180,16 @@ func _restart() -> void:
 	remove_child(old)
 	old.queue_free()
 	sedan = SEDAN_SCENE.instantiate()
-	sedan.position = Vector3(-2.7, -0.05, -42)
+	sedan.position = SPAWN_POSITION
 	add_child(sedan)
-	sedan.shift_rejected.connect(_on_shift_rejected)
+	_connect_sedan_signals()
 	start_attempt(_context)
+
+
+func _connect_sedan_signals() -> void:
+	sedan.shift_rejected.connect(_on_shift_rejected)
+	sedan.engine_state_changed.connect(_on_engine_state_changed)
+	sedan.ignition_rejected.connect(_on_ignition_rejected)
 
 
 func _set_paused(value: bool) -> void:
@@ -177,7 +210,8 @@ func _update_ui() -> void:
 	if _hud == null or sedan == null:
 		return
 	var gear_name := "R" if sedan.gearbox.gear == -1 else ("N" if sedan.gearbox.gear == 0 else str(sedan.gearbox.gear))
-	_hud.text = "SPEED  %02d km/h     RPM  %04d     GEAR  %s\nCLUTCH  %d%%     HANDBRAKE  %s" % [roundi(sedan.speed_mps() * 3.6), roundi(sedan.gearbox.engine_rpm), gear_name, roundi(sedan.controls.clutch * 100), "ON" if sedan.controls.handbrake else "OFF"]
+	var engine_status := "RUNNING" if sedan.gearbox.engine_running else ("STALLED" if sedan.gearbox.engine_stalled else "OFF")
+	_hud.text = "SPEED  %02d km/h     RPM  %04d     GEAR  %s     ENGINE  %s\nCLUTCH  %d%%     HANDBRAKE  %s" % [roundi(sedan.speed_mps() * 3.6), roundi(sedan.gearbox.engine_rpm), gear_name, engine_status, roundi(sedan.controls.clutch * 100), "ON" if sedan.controls.handbrake else "OFF"]
 	_prompt.text = "PRIMARY CONTROLS   •   %d / %d\n%s" % [mini(_step + 1, STEP_TEXT.size()), STEP_TEXT.size(), STEP_TEXT[mini(_step, STEP_TEXT.size() - 1)]]
 	_feedback.text = _last_notice
 
@@ -197,57 +231,90 @@ func _build_yard() -> void:
 	sun.light_energy = 1.55
 	sun.shadow_enabled = true
 	add_child(sun)
-	_surface(Vector3(300, 0.10, 450), Vector3(-50, -0.12, 95), Color("6b8a63"), true)
-	_surface(Vector3(18.0, 0.06, 430), Vector3(0, -0.04, 95), Color("465157"), false)
-	# The cross street gives the player two real turns; its western branch
-	# connects to the circulating road around a raised central island.
-	_surface(Vector3(230, 0.06, 18.0), Vector3(-45, -0.04, 70), Color("465157"), false)
+
+	# The asphalt is one continuous collision surface. The outer walls keep
+	# exploratory driving inside the 160 by 240 metre school lot.
+	_surface(Vector3(200, 0.12, 280), Vector3(0, -0.17, 0), Color("6b8a63"), true, "OuterGround")
+	_surface(Vector3(160, 0.08, 240), Vector3(0, -0.04, 0), Color("4b555a"), true, "LotSurface")
+	_build_lot_perimeter()
+	_build_lot_markings()
+	_build_lot_cones()
+	_build_roundabout(Vector3(-48, 0, 66))
+	_build_roundabout_sign()
+
+	# Familiar roadside shapes sit beyond the practice boundary, not in the
+	# driving path. Cones and paint define the actual exercise area.
 	for side in [-1.0, 1.0]:
-		_surface(Vector3(6.0, 0.16, 179), Vector3(side * 12.5, 0.045, -30.5), Color("b8afa0"), false)
-		_surface(Vector3(6.0, 0.16, 229), Vector3(side * 12.5, 0.045, 195.5), Color("b8afa0"), false)
-		for z in range(-85, 306, 3):
-			if z < 59 or z > 81:
-				_surface(Vector3(0.13, 0.025, 2.9), Vector3(side * 8.60, 0.004, float(z)), Color("eee4c9"), false)
-			if z < 59 or z > 81:
-				_surface(Vector3(0.44, 0.19, 2.84), Vector3(side * 9.22, 0.075, float(z)), Color("ebbd45") if z % 2 == 0 else Color("555b58"), false)
-		for index in range(18):
-			if index in [8, 9, 10]:
-				continue
+		for index in 3:
 			var shop = SHOPFRONT_SCENE.instantiate()
 			shop.palette_index = (index + (0 if side < 0 else 2)) % 4
-			shop.position = Vector3(side * 20.0, 0, -49.0 + float(index) * 14.0)
+			shop.position = Vector3(side * 93.0, 0, -60.0 + float(index) * 60.0)
 			shop.rotation.y = -side * PI / 2.0
 			add_child(shop)
-		for z in [-38.0, -10.0, 18.0, 46.0]:
-			var lamp := STREETLAMP_SCENE.instantiate()
-			lamp.position = Vector3(side * 10.1, 0, z)
-			lamp.rotation.y = -side * PI / 2.0
-			add_child(lamp)
-		for z in [-44.0, -16.0, 12.0, 40.0]:
-			var tree := PALM_SCENE.instantiate()
-			tree.position = Vector3(side * 14.9, 0, z)
-			add_child(tree)
-		for z in [-24.0, 31.0]:
-			var stall := MARKET_STALL_SCENE.instantiate()
-			stall.position = Vector3(side * 12.8, 0, z)
-			stall.rotation.y = -side * PI / 2.0
-			add_child(stall)
-	for z in range(-83, 307, 8):
-		if z < 59 or z > 81:
-			_surface(Vector3(0.12, 0.018, 3.7), Vector3(0, 0.009, float(z)), Color("e8d7a5"), false)
-	for x in range(-151, 70, 8):
-		if abs(x) > 13 and abs(x + 85) > 23:
-			_surface(Vector3(3.7, 0.018, 0.12), Vector3(float(x), 0.009, 70), Color("e8d7a5"), false)
-	_build_roundabout(Vector3(-85, 0, 70))
-	_build_roundabout_sign()
+		for z in [-97.0, -35.0, 35.0, 97.0]:
+			var palm := PALM_SCENE.instantiate()
+			palm.position = Vector3(side * 85.5, 0, z)
+			add_child(palm)
 	var parked := JEEPNEY_SCENE.instantiate()
-	parked.position = Vector3(11.4, 0, 9.0)
-	parked.rotation.y = 0.08
+	parked.position = Vector3(88, 0, 20)
+	parked.rotation.y = -PI / 2.0
 	add_child(parked)
 	var tricycle := TRICYCLE_SCENE.instantiate()
-	tricycle.position = Vector3(-11.4, 0, 28.0)
-	tricycle.rotation.y = PI
+	tricycle.position = Vector3(-88, 0, -15)
+	tricycle.rotation.y = PI / 2.0
 	add_child(tricycle)
+
+
+func _build_lot_perimeter() -> void:
+	for side in [-1.0, 1.0]:
+		var edge_x: float = side * 80.0
+		_surface(Vector3(0.8, 1.25, 240), Vector3(edge_x, 0.625, 0), Color("39464a"), true, "LotWallSide%d" % int(side))
+		_surface(Vector3(0.08, 0.18, 240), Vector3(edge_x - side * 0.45, 0.52, 0), Color("e9bc43"), false)
+		_surface(Vector3(0.08, 0.08, 240), Vector3(edge_x, 2.17, 0), Color("4e6265"), false)
+		for z in range(-120, 121, 12):
+			_surface(Vector3(0.20, 2.25, 0.20), Vector3(edge_x, 1.12, float(z)), Color("586b6b"), false)
+	for side in [-1.0, 1.0]:
+		var edge_z: float = side * 120.0
+		_surface(Vector3(160, 1.25, 0.8), Vector3(0, 0.625, edge_z), Color("39464a"), true, "LotWallEnd%d" % int(side))
+		_surface(Vector3(160, 0.18, 0.08), Vector3(0, 0.52, edge_z - side * 0.45), Color("e9bc43"), false)
+		_surface(Vector3(160, 0.08, 0.08), Vector3(0, 2.17, edge_z), Color("4e6265"), false)
+		for x in range(-80, 81, 12):
+			_surface(Vector3(0.20, 2.25, 0.20), Vector3(float(x), 1.12, edge_z), Color("586b6b"), false)
+
+
+func _build_lot_markings() -> void:
+	var white := Color("ece9dc")
+	var yellow := Color("e8bd4a")
+	# Long, unobstructed launch lane before the central slalom.
+	for side in [-1.0, 1.0]:
+		_surface(Vector3(0.16, 0.018, 75), Vector3(side * 8.0, 0.015, -68), white, false)
+	for z in range(-100, -30, 12):
+		_surface(Vector3(0.16, 0.018, 5.0), Vector3(0, 0.015, float(z)), white, false)
+	_surface(Vector3(16.0, 0.018, 0.25), Vector3(0, 0.015, -26), yellow, false)
+	# A marked maneuver corridor and four generous parking bays.
+	for side in [-1.0, 1.0]:
+		_surface(Vector3(0.16, 0.018, 84), Vector3(side * 13.0, 0.015, 29), yellow, false)
+	for x in [22.0, 34.0, 46.0, 58.0, 70.0]:
+		_surface(Vector3(0.15, 0.018, 43), Vector3(x, 0.015, 37), white, false)
+	for z in [15.5, 58.5]:
+		_surface(Vector3(48, 0.018, 0.15), Vector3(46, 0.015, z), white, false)
+	_surface(Vector3(20, 0.018, 0.22), Vector3(0, 0.015, 88), yellow, false)
+
+
+func _build_lot_cones() -> void:
+	for index in 9:
+		_spawn_cone(Vector3(-4.2 if index % 2 == 0 else 4.2, 0.30, -12.0 + float(index) * 10.0), index)
+	for index in 4:
+		_spawn_cone(Vector3(17.0, 0.30, 10.0 + float(index) * 14.0), 9 + index)
+	for index in 4:
+		_spawn_cone(Vector3(-16.0 + float(index) * 10.0, 0.30, 94.0), 13 + index)
+
+
+func _spawn_cone(at: Vector3, index: int) -> void:
+	var cone := TRAFFIC_CONE_SCENE.instantiate()
+	cone.name = "TrainingCone%02d" % index
+	cone.position = at
+	add_child(cone)
 
 
 func _build_roundabout(center: Vector3) -> void:
@@ -288,14 +355,14 @@ func _build_roundabout(center: Vector3) -> void:
 
 
 func _build_roundabout_sign() -> void:
-	_surface(Vector3(0.10, 2.6, 0.10), Vector3(-8.9, 1.30, 58), Color("35434a"), false)
-	_surface(Vector3(2.90, 0.95, 0.10), Vector3(-8.9, 2.75, 58), Color("294d69"), false)
+	_surface(Vector3(0.10, 2.6, 0.10), Vector3(-22.0, 1.30, 24), Color("35434a"), false)
+	_surface(Vector3(2.90, 0.95, 0.10), Vector3(-22.0, 2.75, 24), Color("294d69"), false)
 	var lettering := Label3D.new()
-	lettering.text = "ROUNDABOUT\nRIGHT TURN  20 m"
+	lettering.text = "PRACTICE LOOP\nROUNDABOUT"
 	lettering.font_size = 42
 	lettering.pixel_size = 0.0022
 	lettering.modulate = Color("f9e6a5")
-	lettering.position = Vector3(-8.9, 2.69, 57.92)
+	lettering.position = Vector3(-22.0, 2.69, 23.92)
 	lettering.rotation.y = PI
 	add_child(lettering)
 
@@ -329,7 +396,7 @@ func _road_material(color: Color) -> StandardMaterial3D:
 	return material
 
 
-func _surface(size: Vector3, at: Vector3, color: Color, collider: bool) -> void:
+func _surface(size: Vector3, at: Vector3, color: Color, collider: bool, surface_name: String = "") -> void:
 	var mesh := BoxMesh.new()
 	mesh.size = size
 	var material := StandardMaterial3D.new()
@@ -339,9 +406,13 @@ func _surface(size: Vector3, at: Vector3, color: Color, collider: bool) -> void:
 	visual.mesh = mesh
 	visual.material_override = material
 	visual.position = at
+	if surface_name != "":
+		visual.name = surface_name + "Visual"
 	add_child(visual)
 	if collider:
 		var body := StaticBody3D.new()
+		if surface_name != "":
+			body.name = surface_name
 		body.position = at
 		var shape := BoxShape3D.new()
 		shape.size = size
@@ -372,7 +443,7 @@ func _build_ui() -> void:
 	_hud = _label(22, Color("f7f5e9"))
 	layout.add_child(_hud)
 	var hint := _label(15, Color("f2e5c7"))
-	hint.text = "W throttle  S brake  A/D steer  C clutch  E/Q gears  Space handbrake  R restart  Esc pause  Mouse look"
+	hint.text = "H engine  W throttle  S brake  A/D steer  C clutch  E/Q gears  Space handbrake  R restart  Esc pause  Mouse look"
 	layout.add_child(hint)
 	_pause_center = CenterContainer.new()
 	_pause_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
