@@ -60,4 +60,5 @@ func _run_corner(acceleration_frames: int) -> Dictionary:
 	Input.action_release("drive_right")
 	world.queue_free()
 	await process_frame
+	await create_timer(0.1).timeout
 	return result

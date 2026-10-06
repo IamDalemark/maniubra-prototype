@@ -10,6 +10,8 @@ Open `build/ManiubraPrototype.app` on this Mac, or open `project.godot` in Godot
 
 The sedan's suspension mounts now sit 0.5 m higher relative to the chassis, lowering its ride height and center of gravity while retaining wheel size. Moderate full-steering turns stay planted; a high-speed full-lock turn can still tip it. This is a simplified game handling tune, not a calibrated vehicle dynamics model.
 
+The engine and road WAVs now have complete loop ranges, so their playback continues during a lesson. The audio volume setting mutes and restores both sounds; engine pitch follows RPM and road sound grows with speed.
+
 | Action | Keyboard and mouse |
 |---|---|
 | Steer | A / D |
@@ -42,5 +44,6 @@ The next course milestone is Secondary Controls. First finish an exported-app sa
 
 - Focused Godot checks passed for transmission, bounded and recoverable attempt storage, the camera staying at the driver seat, and the complete seven-step first-person lesson through saved result navigation. A straight-line frame probe measured zero camera-seat offset at 4–20 m/s; before the fix, the offset grew to 1.6 m. Run the checks with `MANIUBRA_DATA_DIR=/tmp/maniubra-core-check` and `/tmp/maniubra-flow-check` respectively using `tests/core_logic.gd` and `tests/primary_controls_flow.gd` as `--script` arguments.
 - `tests/vehicle_stability.gd` passed on a flat Jolt test surface: a full-lock turn starting near 30 km/h stayed below 5° lean with all wheels contacting, while a full-lock turn starting near 54 km/h tipped. The lowered cockpit was visually checked in the exported app; a manually driven exported-app cornering run is still pending.
+- `tests/audio_playback.gd` passed: both two-second WAV loops were still playing after 3.2 seconds, and the volume setting muted and restored both players. A graphical macOS audio probe measured a live signal on the Master bus after the loop fix; an audible check by the user on their chosen output device remains useful.
 - The release export rebuilt and launched on macOS 26.3.1 (Apple M4 Pro). Its course selection, briefing, straight-ahead first-person view, animated hands, and RPM readout were visually checked in the exported app. Full-resolution lesson and roundabout-map captures were saved. The complete driven run was verified by the scripted Godot check; the roundabout has not yet had a manual exported-app driving playthrough.
 - Persistence was verified with a temporary save override; normal exported-app save/relaunch remains unverified. No physical controller or wheel has been tested. Restricted command-line Godot prints a macOS system-certificate access error and may fail to save global editor settings, despite successful project checks and export.

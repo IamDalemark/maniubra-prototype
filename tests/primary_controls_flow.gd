@@ -104,4 +104,5 @@ func verify() -> void:
 	print("PASS: first-person manual lesson, feedback, save, and result navigation")
 	app.queue_free()
 	await process_frame
+	await create_timer(0.1).timeout
 	quit()

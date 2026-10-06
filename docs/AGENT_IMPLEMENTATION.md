@@ -8,6 +8,8 @@ Implemented now: four-course menu, nine individual maneuver entries, and a playa
 
 The sedan now sits lower on its wheels. A flat-road regression check keeps ordinary full-lock cornering planted and still permits rollover at high speed; inspect handling in a manually driven exported-app run before treating the tune as final.
 
+Audio playback was repaired by setting explicit WAV loop endpoints. The engine and road sounds now stay active, and the volume setting controls both. A graphical macOS probe measured a live Master-bus signal; confirm audibility on the intended speaker/headphone output during the exported-app playthrough.
+
 **Status of Steps 1–6:** implementation, focused logic checks, scripted full-lesson check, and graphical exported-app launch/pause check are done. Step 6's stricter acceptance check remains open: two manually driven runs in the **exported** app (one with deliberate shift errors), followed by save/relaunch and retry verification. Complete that check before marking the first playable milestone fully accepted. Then proceed to Step 7.
 
 Read `AGENTS.md`, the plan, and `docs/ARCHITECTURE.md`. Inspect the current files before editing; this handoff may outlive the initial shell. Record newly discovered hardware and tooling facts instead of assuming them.

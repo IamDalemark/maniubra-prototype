@@ -21,6 +21,7 @@ scripts/attempt_store.gd               Versioned local attempt history
 tests/core_logic.gd                    Transmission and persistence checks
 tests/primary_controls_flow.gd         Scripted complete-lesson check
 tests/vehicle_stability.gd             Flat-road cornering and rollover check
+tests/audio_playback.gd                Loop playback and volume-setting check
 export_presets.cfg                     macOS release export
 assets/ASSET_REGISTER.md               Current original-asset provenance
 assets/ui/course_art/                  Generated course selection illustrations

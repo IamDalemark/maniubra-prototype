@@ -39,6 +39,13 @@ func _ready() -> void:
 	_build_audio()
 
 
+func _exit_tree() -> void:
+	if _engine_audio != null:
+		_engine_audio.stop()
+	if _road_audio != null:
+		_road_audio.stop()
+
+
 func _process(_delta: float) -> void:
 	# VehicleBody3D advances after physics callbacks. Follow its final transform
 	# just before rendering so the cockpit and eye remain in the same frame.
@@ -68,8 +75,7 @@ func _physics_process(delta: float) -> void:
 	_gear_display.text = "R" if gearbox.gear == -1 else ("N" if gearbox.gear == 0 else str(gearbox.gear))
 	if _engine_audio != null:
 		_engine_audio.pitch_scale = 0.72 + (gearbox.engine_rpm - gearbox.IDLE_RPM) / (gearbox.REDLINE_RPM - gearbox.IDLE_RPM) * 1.45
-	if _road_audio != null:
-		_road_audio.volume_db = -80.0 if audio_level == 0.0 else -42.0 + minf(speed_mps() * 3.6, 55.0) * 0.37 + linear_to_db(audio_level)
+	_update_audio_mix()
 	if Input.is_action_just_pressed("drive_gear_up"):
 		_shift(1)
 	if Input.is_action_just_pressed("drive_gear_down"):
@@ -108,10 +114,16 @@ func prepare_mouse_capture() -> void:
 
 func set_audio_level(level: float) -> void:
 	audio_level = clampf(level, 0.0, 1.0)
+	_update_audio_mix()
+
+
+func _update_audio_mix() -> void:
+	var muted := audio_level <= 0.0
+	var level_db := 0.0 if muted else linear_to_db(audio_level)
 	if _engine_audio != null:
-		_engine_audio.volume_db = -80.0 if audio_level == 0.0 else -22.0 + linear_to_db(audio_level)
+		_engine_audio.volume_db = -80.0 if muted else -4.0 + level_db
 	if _road_audio != null:
-		_road_audio.volume_db = -80.0 if audio_level == 0.0 else -42.0 + linear_to_db(audio_level)
+		_road_audio.volume_db = -80.0 if muted else -18.0 + minf(speed_mps() * 3.6, 55.0) * 0.22 + level_db
 
 
 func _shift(direction: int) -> void:
@@ -386,21 +398,28 @@ func _build_audio() -> void:
 	if not ResourceLoader.exists("res://assets/audio/engine_idle.wav") or not ResourceLoader.exists("res://assets/audio/road_noise.wav"):
 		push_warning("Audio has not been imported; open the project in the editor once to import WAV files.")
 		return
-	_engine_audio = AudioStreamPlayer.new()
 	var engine_stream := load("res://assets/audio/engine_idle.wav") as AudioStreamWAV
-	engine_stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	_engine_audio.stream = engine_stream
-	_engine_audio.volume_db = -22.0
-	add_child(_engine_audio)
-	_engine_audio.play()
-	_road_audio = AudioStreamPlayer.new()
 	var road_stream := load("res://assets/audio/road_noise.wav") as AudioStreamWAV
+	if engine_stream == null or road_stream == null:
+		push_error("Engine or road audio could not be loaded as a WAV stream.")
+		return
+	# Imported WAVs have loop_end=0 until a real sample endpoint is supplied.
+	# Enabling LOOP_FORWARD without this ends playback immediately.
+	engine_stream.loop_begin = 0
+	engine_stream.loop_end = roundi(engine_stream.get_length() * engine_stream.mix_rate)
+	engine_stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	road_stream.loop_begin = 0
+	road_stream.loop_end = roundi(road_stream.get_length() * road_stream.mix_rate)
 	road_stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	_engine_audio = AudioStreamPlayer.new()
+	_engine_audio.stream = engine_stream
+	add_child(_engine_audio)
+	_road_audio = AudioStreamPlayer.new()
 	_road_audio.stream = road_stream
-	_road_audio.volume_db = -42.0
 	add_child(_road_audio)
-	_road_audio.play()
 	set_audio_level(audio_level)
+	_engine_audio.play()
+	_road_audio.play()
 
 
 func _material(color: Color, roughness: float) -> StandardMaterial3D:
