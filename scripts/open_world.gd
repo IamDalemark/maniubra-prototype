@@ -366,10 +366,10 @@ func _build_ui() -> void:
 	_toast = PanelContainer.new()
 	_toast.anchor_left = 1.0
 	_toast.anchor_right = 1.0
-	_toast.offset_left = -354.0
+	_toast.offset_left = -444.0
 	_toast.offset_right = -24.0
 	_toast.offset_top = 24.0
-	_toast.offset_bottom = 115.0
+	_toast.offset_bottom = 144.0
 	_toast.visible = false
 	_toast_style = StyleBoxFlat.new()
 	_toast_style.bg_color = Color("142629")
@@ -377,8 +377,13 @@ func _build_ui() -> void:
 	_toast_style.border_width_left = 5
 	_toast.add_theme_stylebox_override("panel", _toast_style)
 	layer.add_child(_toast)
+	var toast_padding := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		toast_padding.add_theme_constant_override("margin_" + side, 12)
+	_toast.add_child(toast_padding)
 	_toast_label = _label(18, Color("f5dc88"))
-	_toast.add_child(_toast_label)
+	_toast_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	toast_padding.add_child(_toast_label)
 	_pause_center = CenterContainer.new()
 	_pause_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_pause_center.visible = false
