@@ -4,7 +4,7 @@ The playable Primary Controls course uses project-created geometry and audio. Th
 
 | Asset | Creator and source | License / use | Notes |
 |---|---|---|---|
-| Sedan exterior and cockpit | Maniubra prototype, `scripts/sedan.gd` | Original project work | Procedural Godot meshes/materials, including full roof shell, headliner, windshield header, wheel, dashboard, seats, hood, mirrors, animated hand/arm visuals, and a moving handbrake lever on the driver-side console. |
+| Sedan exterior and cockpit | Maniubra prototype, `scripts/sedan.gd` | Original project work | Procedural Godot meshes/materials, including full roof shell, headliner, windshield header, wheel, dashboard, seats, hood, mirrors, animated hand/arm visuals for steering, shifts, handbrake and seatbelt, and a moving handbrake lever beside the steering wheel. |
 | Streetscape kit | Maniubra prototype, `scripts/props/city_prop.gd` and `scenes/props/` | Original project work | Reusable Godot 3D scenes for sari-sari/shopfront façades, streetlamps, produce stalls with umbrellas, palms, a jeepney, and a tricycle. These are static visual props; traffic behavior is not implemented. |
 | Primary Controls training lot | Maniubra prototype, `scripts/primary_controls.gd` and `scripts/props/traffic_cone.gd` | Original project work | Enclosed 160 × 240 m lot, markings, parking bays, circular practice loop, lighting, and 17 reusable physical orange-and-white cones. The playable lesson has eight control steps. |
 | Engine and road loops | Maniubra prototype, `tools/generate_audio.py` | Original project work | Synthetic WAV files generated from source code. These are prototype sounds, not recordings of a specific vehicle. |

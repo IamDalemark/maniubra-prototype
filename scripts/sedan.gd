@@ -28,6 +28,9 @@ var _right_hand: MeshInstance3D
 var _left_arm: MeshInstance3D
 var _right_arm: MeshInstance3D
 var _gear_hand_timer := 0.0
+var _handbrake_hand_timer := 0.0
+var _seatbelt_hand_timer := 0.0
+var _last_handbrake_applied := false
 var audio_level := 0.8
 var _engine_audio: AudioStreamPlayer
 var _road_audio: AudioStreamPlayer
@@ -51,7 +54,7 @@ func _exit_tree() -> void:
 		_road_audio.stop()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	# VehicleBody3D advances after physics callbacks. Follow its final transform
 	# just before rendering so the cockpit and eye remain in the same frame.
 	_update_camera()
@@ -59,6 +62,8 @@ func _process(_delta: float) -> void:
 	for index in _side_cameras.size():
 		var side: float = -1.0 if index == 0 else 1.0
 		_side_cameras[index].global_transform = global_transform * Transform3D(Basis(Vector3.UP, -side * 0.72), Vector3(side * 1.0, 1.21, 0.69))
+	if not driving_enabled:
+		_update_hands(delta)
 
 
 func _physics_process(delta: float) -> void:
@@ -67,6 +72,9 @@ func _physics_process(delta: float) -> void:
 		brake = 36.0
 		return
 	controls.update(delta)
+	if controls.handbrake != _last_handbrake_applied:
+		_handbrake_hand_timer = 0.72
+		_last_handbrake_applied = controls.handbrake
 	if Input.is_action_just_pressed("drive_ignition"):
 		_toggle_ignition()
 	if Input.is_action_just_pressed("drive_seatbelt"):
@@ -132,6 +140,7 @@ func set_audio_level(level: float) -> void:
 
 func toggle_seatbelt() -> void:
 	seatbelt_fastened = not seatbelt_fastened
+	_seatbelt_hand_timer = 0.58
 	seatbelt_changed.emit(seatbelt_fastened)
 
 
@@ -280,11 +289,11 @@ func _build_cockpit() -> void:
 	_box(_steering_visual, Vector3(0.13, 0.13, 0.10), Vector3.ZERO, Color("a2b7ae"), 0.4)
 	_lever = _box(self, Vector3(0.055, 0.34, 0.055), Vector3(-0.09, 1.06, -0.02), Color("b6c2bd"), 0.35)
 	_box(_lever, Vector3(0.13, 0.11, 0.13), Vector3(0, 0.18, 0), Color("182326"), 0.85)
-	# Parking brake sits beside the driver's right hand on the side console.
-	_box(self, Vector3(0.12, 0.05, 0.25), Vector3(0.12, 1.16, 0.34), Color("222b2d"), 0.8)
+	# A short lever sits beside the wheel, low enough to keep the gauges clear.
+	_box(self, Vector3(0.12, 0.05, 0.25), Vector3(0.08, 1.07, 0.14), Color("222b2d"), 0.8)
 	_handbrake_lever = Node3D.new()
 	_handbrake_lever.name = "HandbrakeLever"
-	_handbrake_lever.position = Vector3(0.12, 1.21, 0.43)
+	_handbrake_lever.position = Vector3(0.08, 1.12, 0.14)
 	add_child(_handbrake_lever)
 	_box(_handbrake_lever, Vector3(0.03, 0.03, 0.21), Vector3(0, 0.025, -0.09), Color("a9b4af"), 0.36)
 	_box(_handbrake_lever, Vector3(0.05, 0.045, 0.11), Vector3(0, 0.025, -0.19), Color("172124"), 0.82)
@@ -339,15 +348,28 @@ func _build_hands() -> void:
 
 
 func _update_hands(delta: float) -> void:
-	_gear_hand_timer = maxf(_gear_hand_timer - delta, 0.0)
+	# Only the highest-priority reach advances. Other requested reaches wait.
+	if _gear_hand_timer > 0.0:
+		_gear_hand_timer = maxf(_gear_hand_timer - delta, 0.0)
+	elif _handbrake_hand_timer > 0.0:
+		_handbrake_hand_timer = maxf(_handbrake_hand_timer - delta, 0.0)
+	elif _seatbelt_hand_timer > 0.0:
+		_seatbelt_hand_timer = maxf(_seatbelt_hand_timer - delta, 0.0)
 	var left_grip := _steering_visual.position + _steering_visual.basis * Vector3(0.18, 0.15, -0.065)
 	var right_grip := _steering_visual.position + _steering_visual.basis * Vector3(-0.18, 0.15, -0.065)
 	var shift_reach: float = sin((1.0 - _gear_hand_timer / 0.65) * PI) if _gear_hand_timer > 0.0 else 0.0
+	var brake_reach: float = sin((1.0 - _handbrake_hand_timer / 0.72) * PI) if _gear_hand_timer <= 0.0 and _handbrake_hand_timer > 0.0 else 0.0
+	var belt_reach: float = sin((1.0 - _seatbelt_hand_timer / 0.58) * PI) if _gear_hand_timer <= 0.0 and _handbrake_hand_timer <= 0.0 and _seatbelt_hand_timer > 0.0 else 0.0
+	var handbrake_grip := _handbrake_lever.position + _handbrake_lever.basis * Vector3(0.0, 0.055, -0.20)
 	var right_target := right_grip.lerp(_lever.position + Vector3(0.0, 0.21, -0.02), shift_reach)
+	if brake_reach > 0.0:
+		right_target = right_grip.lerp(handbrake_grip, brake_reach)
+	elif belt_reach > 0.0:
+		right_target = right_grip.lerp(Vector3(0.12, 1.34, -0.16), belt_reach)
 	_left_hand.position = left_grip
 	_right_hand.position = right_target
 	_left_hand.rotation.z = _steering_visual.rotation.z
-	_right_hand.rotation.z = lerpf(_steering_visual.rotation.z, 0.0, shift_reach)
+	_right_hand.rotation.z = lerpf(_steering_visual.rotation.z, 0.0, maxf(shift_reach, maxf(brake_reach, belt_reach)))
 	_pose_arm(_left_arm, Vector3(0.78, 0.78, -0.18), left_grip)
 	_pose_arm(_right_arm, Vector3(0.04, 0.78, -0.18), right_target)
 
