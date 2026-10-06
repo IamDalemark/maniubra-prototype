@@ -1,6 +1,6 @@
 # Minimal architecture
 
-Status: Primary Controls and an early playable Open World session. The latter uses procedural district geometry, scripted traffic and pedestrians, and a destination badge. Rule evaluators and mature hazard orchestration remain design boundaries.
+Status: Primary Controls and an early playable Open World session. The latter uses procedural district geometry, scripted traffic and pedestrians, a destination badge, and a small set of contact/stop-line incident checks. General rule evaluators and mature hazard orchestration remain design boundaries.
 
 ## Implemented files
 
@@ -25,6 +25,8 @@ scripts/manual_transmission.gd         Clutch-gated manual gearbox
 scripts/attempt_store.gd               Versioned local attempt history
 tests/core_logic.gd                    Transmission and persistence checks
 tests/primary_controls_flow.gd         Scripted complete-lesson check
+tests/open_world_flow.gd                 Destination, incident, stop-line and review checks
+tests/open_world_collision.gd            Physical pedestrian/traffic contact check
 tests/vehicle_stability.gd             Flat-road cornering and rollover check
 tests/audio_playback.gd                Ignition/audio loop and volume-setting check
 tests/training_lot.gd                  Enclosure and obstacle checks
@@ -39,7 +41,7 @@ AGENTS.md                    Repository rules
 
 `app.gd` owns the menu controls and current navigation state. `course_catalog.gd` contains curriculum data only and returns copies of its data. Course IDs are `primary_controls`, `secondary_controls`, `maneuvers`, and `open_world`. The catalog holds one initial combined lesson for each controls course, nine maneuver lessons, and one open-world lesson.
 
-Primary Controls and Open World have real scene paths and are selectable. The remaining briefings accurately show unavailable lessons. `app.gd` owns image-card selection, session creation/removal, a timestamped result timeline, saved results, and retry; `primary_controls.gd` owns its exercise, feedback, upper-left driver check, and upper-right error toast. Rejected shifts, stalls, and blocked ignition show a timed corrective toast while their events remain in attempt history. The driver check reads sedan seatbelt state and handbrake input; its seatbelt button calls the same toggle as the B key. The seatbelt currently affects presentation only. There is no numeric pass/fail score. UI controls are built in scripts to keep the prototype small; extract dedicated scenes only when presentation work makes that useful.
+Primary Controls and Open World have real scene paths and are selectable. The remaining briefings accurately show unavailable lessons. `app.gd` owns image-card selection, session creation/removal, a timestamped result timeline, saved results, and retry; `primary_controls.gd` owns its exercise, feedback, upper-left driver check, and upper-right error toast. Rejected shifts, stalls, and blocked ignition show a timed corrective toast while their events remain in attempt history. Open World also records pedestrian, vehicle and stall contacts, plus rolling through its one marked stop line, and shows corrective toasts. The driver check reads sedan seatbelt state and handbrake input; its seatbelt button calls the same toggle as the B key. The seatbelt currently affects presentation only. There is no numeric pass/fail score. UI controls are built in scripts to keep the prototype small; extract dedicated scenes only when presentation work makes that useful.
 
 ## Current ownership
 

@@ -240,12 +240,12 @@ func _build_cockpit() -> void:
 	_box(self, Vector3(1.65, 0.22, 0.52), Vector3(0, 1.06, 0.53), Color("313b3e"), 0.85)
 	_box(self, Vector3(1.68, 0.45, 0.13), Vector3(0, 0.91, 0.85), Color("293133"), 0.85)
 	_box(self, Vector3(0.86, 0.055, 0.24), Vector3(0.40, 1.16, 0.70), Color("102027"), 0.27)
-	_box(self, Vector3(0.87, 0.055, 0.15), Vector3(0.40, 1.42, 0.74), Color("222a2c"), 0.76)
-	_speed_needle = _gauge(Vector3(0.23, 1.29, 0.59), Color("e4e9e4"))
-	_rpm_needle = _gauge(Vector3(0.58, 1.29, 0.59), Color("e4e9e4"))
+	_box(self, Vector3(0.87, 0.055, 0.15), Vector3(0.40, 1.32, 0.74), Color("222a2c"), 0.76)
+	_speed_needle = _gauge(Vector3(0.23, 1.21, 0.59), Color("e4e9e4"))
+	_rpm_needle = _gauge(Vector3(0.58, 1.21, 0.59), Color("e4e9e4"))
 	_gear_display = Label3D.new()
 	_gear_display.text = "N"
-	_gear_display.position = Vector3(0.40, 1.25, 0.48)
+	_gear_display.position = Vector3(0.40, 1.17, 0.48)
 	_gear_display.rotation.y = PI
 	_gear_display.font_size = 40
 	_gear_display.pixel_size = 0.00165
@@ -382,8 +382,8 @@ func _pose_arm(arm: MeshInstance3D, elbow: Vector3, wrist: Vector3) -> void:
 
 func _gauge(center: Vector3, tick_color: Color) -> Node3D:
 	var face := CylinderMesh.new()
-	face.top_radius = 0.133
-	face.bottom_radius = 0.133
+	face.top_radius = 0.105
+	face.bottom_radius = 0.105
 	face.height = 0.017
 	face.radial_segments = 32
 	var dial := MeshInstance3D.new()
@@ -393,8 +393,8 @@ func _gauge(center: Vector3, tick_color: Color) -> Node3D:
 	dial.material_override = _material(Color("111b24"), 0.22)
 	add_child(dial)
 	var rim_mesh := TorusMesh.new()
-	rim_mesh.inner_radius = 0.128
-	rim_mesh.outer_radius = 0.145
+	rim_mesh.inner_radius = 0.101
+	rim_mesh.outer_radius = 0.114
 	var rim := MeshInstance3D.new()
 	rim.mesh = rim_mesh
 	rim.position = center + Vector3(0, 0, -0.016)
@@ -403,13 +403,13 @@ func _gauge(center: Vector3, tick_color: Color) -> Node3D:
 	add_child(rim)
 	for index in 13:
 		var angle := -2.2 + float(index) * 4.4 / 12.0
-		var tick := _box(self, Vector3(0.010, 0.023 if index % 3 == 0 else 0.014, 0.013), center + Vector3(sin(angle) * 0.102, cos(angle) * 0.102, -0.028), tick_color, 0.38)
+		var tick := _box(self, Vector3(0.008, 0.018 if index % 3 == 0 else 0.011, 0.013), center + Vector3(sin(angle) * 0.081, cos(angle) * 0.081, -0.028), tick_color, 0.38)
 		tick.rotation.z = -angle
 	var needle := Node3D.new()
 	needle.position = center + Vector3(0, 0, -0.044)
 	add_child(needle)
-	_box(needle, Vector3(0.010, 0.085, 0.017), Vector3(0, 0.034, 0), Color("d4483e"), 0.44)
-	_box(needle, Vector3(0.028, 0.028, 0.027), Vector3.ZERO, Color("e8ebdf"), 0.27)
+	_box(needle, Vector3(0.009, 0.068, 0.017), Vector3(0, 0.027, 0), Color("d4483e"), 0.44)
+	_box(needle, Vector3(0.023, 0.023, 0.027), Vector3.ZERO, Color("e8ebdf"), 0.27)
 	return needle
 
 
