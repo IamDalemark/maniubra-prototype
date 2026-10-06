@@ -2,6 +2,8 @@
 
 Planning baseline: 6 October 2026. This is a proposed implementation plan, not a claim that the features already exist.
 
+Open World planning update, 7 October 2026: see [the Iloilo Open World plan](docs/OPEN_WORLD_PLAN.md) for one freely explorable, connected two-lane district with an automatically displayed optional destination venue name, roughly three-minute A–B spacing, a destination badge/toast, shared traffic, vendors, pedestrians and landmark priorities. Players recognize venues through physical signage and landmarks; there are no navigation markers, route guidance, Free Drive / Destination mode selection or forced completion flow. This is a design plan; gameplay remains unimplemented.
+
 Implementation update: the four-course menu launches an eight-step first-person Primary Controls lesson in an enclosed 160 × 240 m driving-school lot. The manual sedan has H-key ignition, a B-key/clickable seatbelt practice control with a right-arm reach toward the left shoulder, an animated handbrake lever beside the steering wheel with a brief right-hand reach, low-speed engine stalling that shuts off propulsion and audio, animated hands, RPM feedback, and an appropriately stable cockpit camera. The lot has a clear launch lane, parking bays, 17 physical traffic cones, and a circular practice loop, with Philippine-inspired scenery beyond its walls. Local attempt history records stalls and shift errors; other lessons remain unavailable. See `README.md`, `docs/ARCHITECTURE.md`, and `docs/AGENT_IMPLEMENTATION.md` for current implementation and verification. The connection-check section below records the earlier pre-scaffold state.
 
 ## Goal and scope
