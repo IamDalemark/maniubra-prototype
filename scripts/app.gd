@@ -30,7 +30,7 @@ const LESSON_SUMMARY = {
 	"merging": "Choose a gap and join traffic smoothly.",
 	"overtaking": "Read markings before you pass.",
 	"lane_positioning": "Hold an appropriate place in the lane.",
-	"philippine_roads": "Anticipate varied Philippine road hazards.",
+	"philippine_roads": "Explore Iloilo-inspired streets at your own pace.",
 }
 
 var _content: VBoxContainer
@@ -137,7 +137,7 @@ func _show_settings() -> void:
 
 
 func _show_courses() -> void:
-	_clear_page("courses", "Choose your road to practice", "Explore each course. The yellow card is ready to drive; the others show what's coming next.")
+	_clear_page("courses", "Choose your road to practice", "Explore each course. Yellow cards are ready to drive; the others show what's coming next.")
 	var grid := _selection_grid(2)
 	var first: Button = null
 	var attempts := AttemptStore.load_attempts()
@@ -299,6 +299,8 @@ func _show_briefing(lesson_id: String) -> void:
 		_add_button("Start lesson — coming soon", func(): pass).disabled = true
 	else:
 		_add_text("Controls: H engine · B seatbelt · W throttle · S brake · A/D steer · hold C clutch · E/Q gears · hold Space handbrake · mouse look · Esc pause.\nThe seatbelt button can also be clicked while paused.", 17, Color("d4e7d6"))
+		if _course_id == "open_world":
+			_add_text("Molo Plaza appears as an optional venue name while you drive. Find it using the streets and signs; stop in its painted bay for a badge. You can explore for as long as you like and end the drive from pause.", 17, Color("f5d47d"))
 		var previous := AttemptStore.load_attempts()
 		var same_count := 0
 		for attempt in previous:
@@ -355,8 +357,11 @@ func _clear_session() -> void:
 
 func _show_result(saved: bool) -> void:
 	_clear_page("result", "Drive complete", _last_result.get("feedback", ""))
-	var steps: int = int(_last_result.get("step_count", 8))
-	_add_text("%d / %d STEPS COMPLETE     •     %.1f SECONDS     •     %d REJECTED SHIFTS     •     %d STALLS" % [steps, steps, _last_result.get("elapsed_seconds", 0.0), _last_result.get("shift_errors", 0), _last_result.get("stall_count", 0)], 18, Color("f5c548"))
+	if _last_result.get("course_id") == "open_world":
+		_add_text("%.1f SECONDS EXPLORED     •     %s     •     %d STALLS" % [_last_result.get("elapsed_seconds", 0.0), "MOLO EXPLORER BADGE" if _last_result.get("destination_reached") else "DESTINATION OPTIONAL", _last_result.get("stall_count", 0)], 18, Color("f5c548"))
+	else:
+		var steps: int = int(_last_result.get("step_count", 8))
+		_add_text("%d / %d STEPS COMPLETE     •     %.1f SECONDS     •     %d REJECTED SHIFTS     •     %d STALLS" % [steps, steps, _last_result.get("elapsed_seconds", 0.0), _last_result.get("shift_errors", 0), _last_result.get("stall_count", 0)], 18, Color("f5c548"))
 	_add_text("What happened", 24, Color("f8f9f2"))
 	for event in _last_result.get("events", []):
 		if not event is Dictionary:
@@ -376,7 +381,8 @@ func _show_result(saved: bool) -> void:
 			if attempt is Dictionary and attempt.get("lesson_id") == _last_result.get("lesson_id") and attempt.get("scenario_version") == _last_result.get("scenario_version") and attempt.get("assessment_version") == _last_result.get("assessment_version") and attempt.get("vehicle_id") == _last_result.get("vehicle_id") and attempt.get("input_profile_id") == _last_result.get("input_profile_id"):
 				comparable.append(attempt)
 		_add_text("Comparable recent attempts: %d" % comparable.size(), 17, Color("a8c3b5"))
-	_add_button("Retry lesson", _launch_lesson.bind("res://scenes/lessons/primary_controls.tscn")).grab_focus()
+	var lesson := Catalog.get_lesson(_course_id, _lesson_id)
+	_add_button("Drive again" if _course_id == "open_world" else "Retry lesson", _launch_lesson.bind(lesson.get("scene_path", ""))).grab_focus()
 	_add_button("Back to courses", _show_courses)
 
 

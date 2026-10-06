@@ -39,7 +39,7 @@ const COURSES = [
 		"title": "4. Open World — Philippine Roads",
 		"description": "Apply the lessons in a connected district with varied road situations.",
 		"lessons": [
-			{"id": "philippine_roads", "title": "Open-world practice", "objective": "Anticipate Philippine road hazards, respond appropriately, and review a session of varied encounters."},
+			{"id": "philippine_roads", "title": "Explore Iloilo", "objective": "Drive freely through Iloilo-inspired streets. Molo Plaza is an optional destination; stopping there earns a badge.", "scene_path": "res://scenes/lessons/open_world.tscn"},
 		],
 	},
 ]

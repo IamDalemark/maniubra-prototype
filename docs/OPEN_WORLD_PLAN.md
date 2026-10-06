@@ -1,6 +1,6 @@
 # Open World — Iloilo driving plan
 
-Planning date: 7 October 2026. Proposed work only; Open World is not implemented or enabled yet. This plan follows the user's request to plan the next mode after the practice lot.
+Planning date: 7 October 2026. Implementation has begun: a connected drivable district, landmark blockouts and the optional Molo Plaza badge flow are playable. Moving traffic and pedestrians, refined landmark art, and travel-time tuning remain to do.
 
 ## Experience
 

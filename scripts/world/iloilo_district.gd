@@ -1,0 +1,250 @@
+extends Node3D
+## A compressed, connected Iloilo-inspired district for the first Open World pass.
+
+const SHOPFRONT = preload("res://scenes/props/shopfront.tscn")
+const PALM = preload("res://scenes/props/palm.tscn")
+const STALL = preload("res://scenes/props/market_stall.tscn")
+const ROAD_X := [-200.0, 0.0, 200.0]
+const ROAD_Z := [-250.0, 0.0, 250.0]
+const ROAD_WIDTH := 8.5
+const START := Vector3(-201.8, 0.05, -225.0)
+const DESTINATION := Vector3(211.0, 0.05, 221.0)
+const DESTINATION_SIZE := Vector2(10.0, 13.0)
+
+
+func _ready() -> void:
+	_environment()
+	_box(Vector3(530, 0.22, 640), Vector3(0, -0.16, 0), Color("728969"), true, "Ground")
+	_build_roads()
+	_build_plaza()
+	_build_calle_real()
+	_build_riverside()
+	_build_neighborhood()
+	_build_destination()
+	_build_bounds()
+
+
+func destination_contains_vehicle(vehicle: Node3D) -> bool:
+	# The sedan's exterior footprint is about 1.8 by 3.95 metres.
+	for local in [Vector3(-0.9, 0, -1.98), Vector3(0.9, 0, -1.98), Vector3(-0.9, 0, 1.98), Vector3(0.9, 0, 1.98)]:
+		var point := vehicle.to_global(local)
+		if absf(point.x - DESTINATION.x) > DESTINATION_SIZE.x * 0.5 or absf(point.z - DESTINATION.z) > DESTINATION_SIZE.y * 0.5:
+			return false
+	return true
+
+
+func _environment() -> void:
+	var world := WorldEnvironment.new()
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color("80bde8")
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color("f4e8cc")
+	env.ambient_light_energy = 0.72
+	world.environment = env
+	add_child(world)
+	var sun := DirectionalLight3D.new()
+	sun.rotation_degrees = Vector3(-40, -31, 0)
+	sun.light_energy = 1.48
+	sun.shadow_enabled = true
+	add_child(sun)
+
+
+func _build_roads() -> void:
+	for road_x in ROAD_X:
+		_box(Vector3(ROAD_WIDTH, 0.09, 510), Vector3(road_x, -0.04, 0), Color("465057"), false)
+		for edge in [-1.0, 1.0]:
+			_box(Vector3(0.09, 0.015, 495), Vector3(road_x + edge * 4.04, 0.017, 0), Color("e7e8df"), false)
+		for z in range(-238, 239, 12):
+			if abs(z) < 13 or abs(z - 250) < 13 or abs(z + 250) < 13:
+				continue
+			_box(Vector3(0.12, 0.016, 4.4), Vector3(road_x, 0.018, z), Color("dfb849"), false)
+	for road_z in ROAD_Z:
+		_box(Vector3(410, 0.09, ROAD_WIDTH), Vector3(0, -0.035, road_z), Color("465057"), false)
+		for edge in [-1.0, 1.0]:
+			_box(Vector3(395, 0.015, 0.09), Vector3(0, 0.021, road_z + edge * 4.04), Color("e7e8df"), false)
+		for x in range(-188, 189, 12):
+			if abs(x) < 13 or abs(x - 200) < 13 or abs(x + 200) < 13:
+				continue
+			_box(Vector3(4.4, 0.016, 0.12), Vector3(x, 0.024, road_z), Color("dfb849"), false)
+	# Broad sidewalks mark the road edges but do not block the destination bay.
+	for x in ROAD_X:
+		for side in [-1.0, 1.0]:
+			if x == 200.0 and side > 0.0:
+				continue
+			_box(Vector3(2.0, 0.10, 474), Vector3(x + side * 5.45, -0.015, 0), Color("b7ad96"), false)
+	for z in ROAD_Z:
+		for side in [-1.0, 1.0]:
+			_box(Vector3(374, 0.10, 2.0), Vector3(0, -0.015, z + side * 5.45), Color("b7ad96"), false)
+	for x in ROAD_X:
+		for z in ROAD_Z:
+			for side in [-1.0, 1.0]:
+				for stripe in 5:
+					_box(Vector3(0.48, 0.014, 0.58), Vector3(x + side * (6.2 + stripe * 0.86), 0.03, z - 7.6), Color("f4f0df"), false)
+	_build_roundabout()
+
+
+func _build_roundabout() -> void:
+	# The centre crossroad opens onto a ring around a collidable planted island.
+	var tool := SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for index in 48:
+		var a := float(index) * TAU / 48.0
+		var b := float(index + 1) * TAU / 48.0
+		for point in [Vector3(cos(a) * 5.8, 0.032, sin(a) * 5.8), Vector3(cos(a) * 10.0, 0.032, sin(a) * 10.0), Vector3(cos(b) * 5.8, 0.032, sin(b) * 5.8), Vector3(cos(a) * 10.0, 0.032, sin(a) * 10.0), Vector3(cos(b) * 10.0, 0.032, sin(b) * 10.0), Vector3(cos(b) * 5.8, 0.032, sin(b) * 5.8)]:
+			tool.add_vertex(point)
+	tool.generate_normals()
+	var ring := MeshInstance3D.new()
+	ring.mesh = tool.commit()
+	var mat := _material(Color("465057"))
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	ring.material_override = mat
+	add_child(ring)
+	var island := CylinderMesh.new()
+	island.top_radius = 5.8
+	island.bottom_radius = 5.8
+	island.height = 0.25
+	island.radial_segments = 48
+	var island_visual := MeshInstance3D.new()
+	island_visual.mesh = island
+	island_visual.position.y = 0.12
+	island_visual.material_override = _material(Color("67905a"))
+	add_child(island_visual)
+	var body := StaticBody3D.new()
+	body.name = "RoundaboutIsland"
+	body.position.y = 0.12
+	var collision := CollisionShape3D.new()
+	var shape := CylinderShape3D.new()
+	shape.radius = 5.7
+	shape.height = 0.25
+	collision.shape = shape
+	body.add_child(collision)
+	add_child(body)
+	var palm := PALM.instantiate()
+	palm.position.y = 0.25
+	add_child(palm)
+
+
+func _build_plaza() -> void:
+	# A paired church/plaza silhouette anchors the destination neighborhood.
+	_box(Vector3(29, 0.12, 37), Vector3(231, -0.01, 198), Color("c0ad8b"), false)
+	_box(Vector3(16, 10, 20), Vector3(239, 5, 194), Color("e4d5b1"), true, "MoloChurch")
+	_box(Vector3(17, 1.0, 22), Vector3(239, 10.4, 194), Color("85735f"), false)
+	for x in [232.5, 245.5]:
+		_box(Vector3(4.8, 19, 4.8), Vector3(x, 9.5, 204), Color("d6c29a"), false)
+		_box(Vector3(5.6, 1.0, 5.6), Vector3(x, 19.4, 204), Color("816b5b"), false)
+		_box(Vector3(3.0, 2.7, 3.0), Vector3(x, 21.2, 204), Color("b7a783"), false)
+	for x in [234.0, 239.0, 244.0]:
+		_box(Vector3(2.0, 4.1, 0.13), Vector3(x, 3.4, 204.1), Color("415763"), false)
+	_sign("MOLO CHURCH", Vector3(225, 2.5, 213.0), PI)
+	_box(Vector3(24, 0.12, 29), Vector3(232, -0.015, 232), Color("92a772"), false)
+	for x in [222.0, 242.0]:
+		for z in [221.0, 243.0]:
+			var tree := PALM.instantiate()
+			tree.position = Vector3(x, 0.05, z)
+			add_child(tree)
+	_sign("MOLO PLAZA", Vector3(221, 2.7, 223.5), PI)
+
+
+func _build_calle_real() -> void:
+	for index in 10:
+		var shop := SHOPFRONT.instantiate()
+		shop.palette_index = index % 4
+		shop.position = Vector3(-170.0 + float(index) * 16.5, 0, 267)
+		shop.rotation.y = PI
+		add_child(shop)
+	_sign("CALLE REAL", Vector3(-70, 4.7, 259.0), PI)
+	for x in [-156.0, -92.0, -28.0]:
+		var lamp := PALM.instantiate()
+		lamp.position = Vector3(x, 0.05, 258)
+		add_child(lamp)
+
+
+func _build_riverside() -> void:
+	# Water runs beneath three bridge crossings; the road remains continuous.
+	_box(Vector3(500, 0.022, 21), Vector3(0, -0.026, 112), Color("4f9bb4"), false)
+	for x in ROAD_X:
+		_box(Vector3(ROAD_WIDTH, 0.08, 30), Vector3(x, 0.005, 112), Color("59636a"), false)
+		for side in [-1.0, 1.0]:
+			_box(Vector3(0.13, 0.75, 30), Vector3(x + side * 4.23, 0.47, 112), Color("bcc9c6"), false)
+	_box(Vector3(480, 0.07, 4), Vector3(0, 0.02, 129), Color("bcaf96"), false)
+	for x in [-145.0, -88.0, -32.0, 50.0, 112.0, 170.0]:
+		var palm := PALM.instantiate()
+		palm.position = Vector3(x, 0.08, 133)
+		add_child(palm)
+	_sign("ILOILO RIVER ESPLANADE", Vector3(72, 3.1, 138), PI)
+
+
+func _build_neighborhood() -> void:
+	for index in 9:
+		var shop := SHOPFRONT.instantiate()
+		shop.palette_index = (index + 2) % 4
+		shop.position = Vector3(-145.0 + float(index) * 32.0, 0, -268)
+		add_child(shop)
+	for index in 6:
+		var shop := SHOPFRONT.instantiate()
+		shop.palette_index = index % 4
+		shop.position = Vector3(216, 0, -212.0 + float(index) * 42.0)
+		shop.rotation.y = -PI / 2.0
+		add_child(shop)
+	for at in [Vector3(-193.2, 0, -103), Vector3(194.1, 0, -74), Vector3(194.0, 0, -52)]:
+		var vendor := STALL.instantiate()
+		vendor.position = at
+		add_child(vendor)
+		_box(Vector3(2.35, 1.4, 1.5), at + Vector3(0, 0.8, 0), Color(0, 0, 0, 0), true, "VendorObstacle")
+
+
+func _build_destination() -> void:
+	_box(Vector3(DESTINATION_SIZE.x + 1.0, 0.07, DESTINATION_SIZE.y + 1.0), DESTINATION + Vector3(0, -0.035, 0), Color("525b5d"), false)
+	var paint := Color("f4d65e")
+	for edge in [-1.0, 1.0]:
+		_box(Vector3(0.18, 0.022, DESTINATION_SIZE.y), DESTINATION + Vector3(edge * DESTINATION_SIZE.x * 0.5, 0.031, 0), paint, false)
+		_box(Vector3(DESTINATION_SIZE.x, 0.022, 0.18), DESTINATION + Vector3(0, 0.031, edge * DESTINATION_SIZE.y * 0.5), paint, false)
+	_sign("MOLO PLAZA STOP", Vector3(220, 2.6, 219), -PI / 2.0)
+
+
+func _build_bounds() -> void:
+	for x in [-264.0, 264.0]:
+		_box(Vector3(0.6, 1.4, 640), Vector3(x, 0.7, 0), Color("54745e"), true, "Boundary")
+	for z in [-318.0, 318.0]:
+		_box(Vector3(530, 1.4, 0.6), Vector3(0, 0.7, z), Color("54745e"), true, "Boundary")
+
+
+func _sign(words: String, at: Vector3, yaw: float) -> void:
+	_box(Vector3(0.10, 2.4, 0.10), at + Vector3(0, -1.0, 0), Color("465257"), false)
+	var label := Label3D.new()
+	label.text = words
+	label.font_size = 52
+	label.pixel_size = 0.0024
+	label.modulate = Color("f8e7ad")
+	label.position = at
+	label.rotation.y = yaw
+	add_child(label)
+
+
+func _box(size: Vector3, at: Vector3, color: Color, collider: bool, box_name: String = "") -> void:
+	if color.a > 0.0:
+		var visual := MeshInstance3D.new()
+		var mesh := BoxMesh.new()
+		mesh.size = size
+		visual.mesh = mesh
+		visual.material_override = _material(color)
+		visual.position = at
+		add_child(visual)
+	if collider:
+		var body := StaticBody3D.new()
+		body.name = box_name
+		body.position = at
+		var collision := CollisionShape3D.new()
+		var shape := BoxShape3D.new()
+		shape.size = size
+		collision.shape = shape
+		body.add_child(collision)
+		add_child(body)
+
+
+func _material(color: Color) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.roughness = 0.91
+	return material
