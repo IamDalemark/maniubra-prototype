@@ -129,14 +129,22 @@ func _build_plaza() -> void:
 	# A paired church/plaza silhouette anchors the destination neighborhood.
 	_box(Vector3(29, 0.12, 37), Vector3(231, -0.01, 198), Color("c0ad8b"), false)
 	_box(Vector3(16, 10, 20), Vector3(239, 5, 194), Color("e4d5b1"), true, "MoloChurch")
-	_box(Vector3(17, 1.0, 22), Vector3(239, 10.4, 194), Color("85735f"), false)
+	_box(Vector3(17, 0.65, 22), Vector3(239, 10.15, 194), Color("87715c"), false)
+	_box(Vector3(13.8, 0.55, 0.52), Vector3(239, 7.1, 183.66), Color("a28a6e"), false)
 	for x in [232.5, 245.5]:
-		_box(Vector3(4.8, 19, 4.8), Vector3(x, 9.5, 204), Color("d6c29a"), false)
-		_box(Vector3(5.6, 1.0, 5.6), Vector3(x, 19.4, 204), Color("816b5b"), false)
-		_box(Vector3(3.0, 2.7, 3.0), Vector3(x, 21.2, 204), Color("b7a783"), false)
-	for x in [234.0, 239.0, 244.0]:
-		_box(Vector3(2.0, 4.1, 0.13), Vector3(x, 3.4, 204.1), Color("415763"), false)
-	_sign("MOLO CHURCH", Vector3(225, 2.5, 213.0), PI)
+		_box(Vector3(4.8, 18, 4.8), Vector3(x, 9.0, 184), Color("d6c29a"), false)
+		for y in [6.8, 12.8, 18.2]:
+			_box(Vector3(5.45, 0.42, 5.45), Vector3(x, y, 184), Color("927b61"), false)
+		for y in [9.3, 14.9]:
+			_box(Vector3(0.85, 2.4, 0.12), Vector3(x, y, 181.52), Color("3d5360"), false)
+		_cone(2.55, 5.8, Vector3(x, 21.25, 184), Color("866e58"))
+		_cone(0.33, 1.6, Vector3(x, 24.9, 184), Color("e1c895"))
+	for x in [235.9, 239.0, 242.1]:
+		_box(Vector3(1.7, 4.2, 0.16), Vector3(x, 3.5, 183.86), Color("3e5260"), false)
+		_box(Vector3(1.95, 0.22, 0.22), Vector3(x, 5.68, 183.82), Color("b39977"), false)
+	_box(Vector3(2.3, 0.65, 0.15), Vector3(239, 0.35, 183.70), Color("786755"), false)
+	_cone(1.65, 0.12, Vector3(239, 8.15, 183.74), Color("50616b"))
+	_sign("MOLO CHURCH", Vector3(220, 2.5, 180.5), PI)
 	_box(Vector3(24, 0.12, 29), Vector3(232, -0.015, 232), Color("92a772"), false)
 	for x in [222.0, 242.0]:
 		for z in [221.0, 243.0]:
@@ -148,11 +156,17 @@ func _build_plaza() -> void:
 
 func _build_calle_real() -> void:
 	for index in 10:
+		var center_x := -170.0 + float(index) * 16.5
 		var shop := SHOPFRONT.instantiate()
 		shop.palette_index = index % 4
-		shop.position = Vector3(-170.0 + float(index) * 16.5, 0, 267)
+		shop.position = Vector3(center_x, 0, 267)
 		shop.rotation.y = PI
 		add_child(shop)
+		var stone := Color("e2d1ad") if index % 2 == 0 else Color("c8b89a")
+		_box(Vector3(10.4, 0.42, 0.55), Vector3(center_x, 7.65, 263.55), stone, false)
+		_box(Vector3(10.2, 0.24, 0.7), Vector3(center_x, 4.08, 262.85), Color("a78a70"), false)
+		for offset in [-4.15, 0.0, 4.15]:
+			_box(Vector3(0.43, 3.75, 0.58), Vector3(center_x + offset, 2.0, 262.72), stone, false)
 	_sign("CALLE REAL", Vector3(-70, 4.7, 259.0), PI)
 	for x in [-156.0, -92.0, -28.0]:
 		var lamp := PALM.instantiate()
@@ -168,6 +182,12 @@ func _build_riverside() -> void:
 		for side in [-1.0, 1.0]:
 			_box(Vector3(0.13, 0.75, 30), Vector3(x + side * 4.23, 0.47, 112), Color("bcc9c6"), false)
 	_box(Vector3(480, 0.07, 4), Vector3(0, 0.02, 129), Color("bcaf96"), false)
+	for x in range(-240, 241, 8):
+		if minf(absf(float(x + 200)), minf(absf(float(x)), absf(float(x - 200)))) < 9.0:
+			continue
+		for z in [101.0, 123.0]:
+			_box(Vector3(0.12, 1.05, 0.12), Vector3(float(x), 0.56, z), Color("627b7c"), false)
+			_box(Vector3(7.9, 0.11, 0.11), Vector3(float(x) + 4.0, 1.02, z), Color("627b7c"), false)
 	for x in [-145.0, -88.0, -32.0, 50.0, 112.0, 170.0]:
 		var palm := PALM.instantiate()
 		palm.position = Vector3(x, 0.08, 133)
@@ -219,9 +239,23 @@ func _sign(words: String, at: Vector3, yaw: float) -> void:
 	label.font_size = 52
 	label.pixel_size = 0.0024
 	label.modulate = Color("f8e7ad")
+	label.double_sided = true
 	label.position = at
 	label.rotation.y = yaw
 	add_child(label)
+
+
+func _cone(radius: float, height: float, at: Vector3, color: Color) -> void:
+	var cone := CylinderMesh.new()
+	cone.top_radius = 0.08
+	cone.bottom_radius = radius
+	cone.height = height
+	cone.radial_segments = 8
+	var visual := MeshInstance3D.new()
+	visual.mesh = cone
+	visual.position = at
+	visual.material_override = _material(color)
+	add_child(visual)
 
 
 func _box(size: Vector3, at: Vector3, color: Color, collider: bool, box_name: String = "") -> void:
