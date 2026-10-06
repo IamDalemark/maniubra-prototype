@@ -19,14 +19,29 @@ func run() -> void:
 	await physics_frame
 	var drive = app._session
 	assert(drive._started and drive.sedan.camera.current)
+	assert(drive.traffic.size() == 6 and drive.pedestrians.size() == 7)
+	assert(drive.district.get_children().filter(func(node): return node is StaticBody3D and node.name.begins_with("VendorObstacle")).size() == 3)
+	var car_start: Vector3 = drive.traffic[0].global_position
+	var walker_start: Vector3 = drive.pedestrians[0].global_position
+	for index in 90:
+		await physics_frame
+	assert(drive.traffic[0].global_position.distance_to(car_start) > 2.0)
+	assert(drive.pedestrians[0].global_position.distance_to(walker_start) > 1.0)
 	assert(drive._venue.text.contains("Molo Plaza"))
 	assert(drive.district.get_node("RoundaboutIsland") != null)
 	assert(drive.district.START.distance_to(drive.district.DESTINATION) > 550.0)
+	drive.sedan.freeze = true
+	drive.sedan.global_position = drive.pedestrians[5].global_position + Vector3(5.2, 0, -33)
+	for index in 3:
+		await physics_frame
+	assert(drive.pedestrians[5]._crossing_active)
+	assert(drive._events.any(func(event): return event.get("type") == "pedestrian_crossing"))
 	# Ending the drive without visiting the venue is a valid exploratory result.
 	drive._end_drive()
 	assert(app._page == "result")
 	assert(not app._last_result["destination_reached"])
 	assert(app._last_result["badge_id"] == "")
+	assert(int(app._last_result["hazard_seed"]) > 0)
 	app._launch_lesson("res://scenes/lessons/open_world.tscn")
 	await physics_frame
 	drive = app._session

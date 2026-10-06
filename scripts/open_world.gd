@@ -6,6 +6,8 @@ signal exit_requested
 
 const DISTRICT = preload("res://scenes/world/iloilo_district.tscn")
 const SEDAN = preload("res://scenes/vehicles/sedan.tscn")
+const TRAFFIC = preload("res://scripts/world/traffic_vehicle.gd")
+const PEDESTRIAN = preload("res://scripts/world/pedestrian.gd")
 const VENUE_NAME := "Molo Plaza"
 
 var district
@@ -17,6 +19,9 @@ var _arrival_hold := 0.0
 var _venue_reached := false
 var _events: Array = []
 var _context: Dictionary = {}
+var _encounter_seed := 0
+var traffic: Array = []
+var pedestrians: Array = []
 var _hud: Label
 var _venue: Label
 var _toast: PanelContainer
@@ -36,6 +41,11 @@ func _ready() -> void:
 
 func start_attempt(context: Dictionary) -> void:
 	_context = context.duplicate(true)
+	_encounter_seed = int(_context.get("hazard_seed", randi()))
+	_context["hazard_seed"] = _encounter_seed
+	if traffic.is_empty():
+		_spawn_traffic()
+		_spawn_pedestrians()
 	_elapsed = 0.0
 	_arrival_hold = 0.0
 	_venue_reached = false
@@ -135,6 +145,7 @@ func _restart() -> void:
 	remove_child(old)
 	old.queue_free()
 	_spawn_sedan()
+	_clear_actors()
 	_pause_center.visible = false
 	start_attempt(_context)
 
@@ -146,9 +157,90 @@ func _spawn_sedan() -> void:
 	sedan.engine_state_changed.connect(_on_engine_state_changed)
 
 
+func _spawn_traffic() -> void:
+	var clockwise := PackedVector3Array([
+		Vector3(-201.8, 0.05, -225), Vector3(-201.8, 0.05, 220), Vector3(-198, 0.05, 246),
+		Vector3(-174, 0.05, 251.8), Vector3(174, 0.05, 251.8), Vector3(198, 0.05, 246),
+		Vector3(201.8, 0.05, 220), Vector3(201.8, 0.05, -220), Vector3(198, 0.05, -246),
+		Vector3(174, 0.05, -251.8), Vector3(-174, 0.05, -251.8), Vector3(-198, 0.05, -246),
+	])
+	var counterclockwise := PackedVector3Array([
+		Vector3(-198.2, 0.05, 220), Vector3(-198.2, 0.05, -220), Vector3(-174, 0.05, -248.2),
+		Vector3(174, 0.05, -248.2), Vector3(198.2, 0.05, -220), Vector3(198.2, 0.05, 220),
+		Vector3(174, 0.05, 248.2), Vector3(-174, 0.05, 248.2),
+	])
+	for setup in [
+		{"kind": "car", "path": clockwise, "index": 1, "speed": 7.2},
+		{"kind": "jeepney", "path": clockwise, "index": 4, "speed": 5.4, "stop": 4},
+		{"kind": "tricycle", "path": clockwise, "index": 8, "speed": 4.3, "stop": 8},
+		{"kind": "car", "path": counterclockwise, "index": 3, "speed": 7.0},
+		{"kind": "jeepney", "path": counterclockwise, "index": 5, "speed": 5.2, "stop": 5},
+		{"kind": "tricycle", "path": counterclockwise, "index": 7, "speed": 4.2, "stop": 7},
+	]:
+		var actor = TRAFFIC.new()
+		actor.kind = setup["kind"]
+		actor.points = setup["path"]
+		var index: int = setup["index"]
+		actor.position = actor.points[index]
+		actor.next_index = (index + 1) % actor.points.size()
+		var next_point: Vector3 = actor.points[actor.next_index] - actor.position
+		actor.rotation.y = atan2(next_point.x, next_point.z)
+		actor.cruise_speed = setup["speed"]
+		actor.stop_index = setup.get("stop", -1)
+		actor.stop_seconds = 4.0 if actor.kind == "jeepney" else 2.8
+		actor.player = sedan
+		add_child(actor)
+		traffic.append(actor)
+
+
+func _spawn_pedestrians() -> void:
+	var randomizer := RandomNumberGenerator.new()
+	randomizer.seed = _encounter_seed
+	for endpoints in [
+		[Vector3(-207.0, 0.05, -170), Vector3(-207.0, 0.05, -75)],
+		[Vector3(-193.0, 0.05, -55), Vector3(-193.0, 0.05, 48)],
+		[Vector3(-100.0, 0.05, 258), Vector3(-28.0, 0.05, 258)],
+		[Vector3(226.0, 0.05, 209), Vector3(226.0, 0.05, 244)],
+		[Vector3(80.0, 0.05, 130), Vector3(130.0, 0.05, 130)],
+	]:
+		_add_pedestrian(endpoints[0], endpoints[1], false)
+	var western_crossing: float = [-132.0, -112.0, -90.0][randomizer.randi_range(0, 2)]
+	var eastern_crossing: float = [34.0, 54.0, 76.0][randomizer.randi_range(0, 2)]
+	_add_pedestrian(Vector3(-207, 0.05, western_crossing), Vector3(-193, 0.05, western_crossing), true)
+	_add_pedestrian(Vector3(193, 0.05, eastern_crossing), Vector3(207, 0.05, eastern_crossing), true)
+
+
+func _add_pedestrian(start: Vector3, finish: Vector3, is_crossing: bool) -> void:
+	var person = PEDESTRIAN.new()
+	person.points = PackedVector3Array([finish, start]) if not is_crossing else PackedVector3Array([finish])
+	person.position = start
+	person.crossing = is_crossing
+	person.player = sedan
+	person.traffic = traffic
+	person.crossing_started.connect(_on_pedestrian_crossing)
+	add_child(person)
+	pedestrians.append(person)
+
+
+func _on_pedestrian_crossing(person: Node3D) -> void:
+	if not _started or _paused:
+		return
+	_events.append({"type": "pedestrian_crossing", "elapsed_seconds": snappedf(_elapsed, 0.01), "detail": "A pedestrian entered the road near your position.", "location": [snappedf(person.global_position.x, 0.1), snappedf(person.global_position.z, 0.1)]})
+
+
+func _clear_actors() -> void:
+	for actor in traffic + pedestrians:
+		remove_child(actor)
+		actor.queue_free()
+	traffic.clear()
+	pedestrians.clear()
+
+
 func _set_paused(value: bool) -> void:
 	_paused = value
 	sedan.driving_enabled = not value
+	for actor in traffic + pedestrians:
+		actor.set_physics_process(not value)
 	_pause_center.visible = value
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if value else Input.MOUSE_MODE_CAPTURED
 	if value:

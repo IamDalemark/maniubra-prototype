@@ -187,11 +187,13 @@ func _build_neighborhood() -> void:
 		shop.position = Vector3(216, 0, -212.0 + float(index) * 42.0)
 		shop.rotation.y = -PI / 2.0
 		add_child(shop)
-	for at in [Vector3(-193.2, 0, -103), Vector3(194.1, 0, -74), Vector3(194.0, 0, -52)]:
+	var vendor_sites := [Vector3(-196.0, 0, -103), Vector3(196.0, 0, -74), Vector3(196.0, 0, -52)]
+	for index in vendor_sites.size():
+		var at: Vector3 = vendor_sites[index]
 		var vendor := STALL.instantiate()
 		vendor.position = at
 		add_child(vendor)
-		_box(Vector3(2.35, 1.4, 1.5), at + Vector3(0, 0.8, 0), Color(0, 0, 0, 0), true, "VendorObstacle")
+		_box(Vector3(2.35, 1.4, 1.5), at + Vector3(0, 0.8, 0), Color(0, 0, 0, 0), true, "VendorObstacle%d" % index)
 
 
 func _build_destination() -> void:

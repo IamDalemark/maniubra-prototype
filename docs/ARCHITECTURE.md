@@ -1,6 +1,6 @@
 # Minimal architecture
 
-Status: first playable Primary Controls course. Later courses, rule evaluators, NPC traffic, and randomized hazards remain design boundaries.
+Status: Primary Controls and an early playable Open World session. The latter uses procedural district geometry, scripted traffic and pedestrians, and a destination badge. Rule evaluators and mature hazard orchestration remain design boundaries.
 
 ## Implemented files
 
@@ -11,6 +11,10 @@ scripts/app.gd               Main menu → courses → lessons → briefing → 
 scripts/course_catalog.gd    Four courses and twelve stable lesson records
 scenes/lessons/primary_controls.tscn   First playable driving session
 scripts/primary_controls.gd            Yard, guided steps, HUD, result events
+scenes/lessons/open_world.tscn           Connected free-driving session
+scripts/open_world.gd                    Optional venue, badge, traffic ownership, review
+scenes/world/iloilo_district.tscn        Compressed Iloilo-inspired road scene
+scripts/world/*.gd                       District geometry, moving traffic, pedestrians
 scenes/vehicles/sedan.tscn             First-person manual sedan
 scripts/sedan.gd                       Vehicle motion, cockpit, mirrors, audio
 scenes/props/*.tscn                    Streetscape props and movable traffic cone
@@ -35,7 +39,7 @@ AGENTS.md                    Repository rules
 
 `app.gd` owns the menu controls and current navigation state. `course_catalog.gd` contains curriculum data only and returns copies of its data. Course IDs are `primary_controls`, `secondary_controls`, `maneuvers`, and `open_world`. The catalog holds one initial combined lesson for each controls course, nine maneuver lessons, and one open-world lesson.
 
-Primary Controls has a real scene path and is selectable. The other briefings accurately show unavailable lessons. `app.gd` owns image-card selection, session creation/removal, a timestamped result timeline, saved results, and retry; `primary_controls.gd` owns its exercise, feedback, upper-left driver check, and upper-right error toast. Rejected shifts, stalls, and blocked ignition show a timed corrective toast while their events remain in attempt history. The driver check reads sedan seatbelt state and handbrake input; its seatbelt button calls the same toggle as the B key. The seatbelt currently affects presentation only. There is no numeric pass/fail score. UI controls are built in scripts to keep the prototype small; extract dedicated scenes only when presentation work makes that useful.
+Primary Controls and Open World have real scene paths and are selectable. The remaining briefings accurately show unavailable lessons. `app.gd` owns image-card selection, session creation/removal, a timestamped result timeline, saved results, and retry; `primary_controls.gd` owns its exercise, feedback, upper-left driver check, and upper-right error toast. Rejected shifts, stalls, and blocked ignition show a timed corrective toast while their events remain in attempt history. The driver check reads sedan seatbelt state and handbrake input; its seatbelt button calls the same toggle as the B key. The seatbelt currently affects presentation only. There is no numeric pass/fail score. UI controls are built in scripts to keep the prototype small; extract dedicated scenes only when presentation work makes that useful.
 
 ## Current ownership
 
@@ -65,7 +69,7 @@ Input and transmission are small scripts owned by the vehicle, with focused chec
 
 ## Small integration contracts
 
-**Catalog:** preserve the existing `get_courses()`, `get_course(id)`, and `get_lesson(course_id, lesson_id)` interface. `scene_path` is set only for the implemented Primary Controls lesson. The app validates that path before enabling Start. User-visible titles may change without changing IDs.
+**Catalog:** preserve the existing `get_courses()`, `get_course(id)`, and `get_lesson(course_id, lesson_id)` interface. `scene_path` is set for Primary Controls and Open World. The app validates that path before enabling Start. User-visible titles may change without changing IDs.
 
 **Session lifecycle:** App loads the selected scene, calls `start_attempt(context)`, and connects `attempt_finished(result)` and `exit_requested`. Context starts with `course_id`, `lesson_id`, `vehicle_id`, and `input_profile_id`. Add scenario and assessment versions when saving begins. Restart resets all owned nodes or reconstructs the session; it never reuses the previous event list. App frees the session and releases captured mouse input before showing menus.
 
@@ -94,7 +98,7 @@ The cockpit must support the driver's actual eye position, clear windshield sigh
 
 - Godot loads the configured main scene without script/scene errors.
 - The four course groups and all nine maneuver entries are reachable.
-- Primary Controls enters a first-person sedan session with a complete eight-step control sequence and feedback; other briefings show unavailable gameplay.
+- Primary Controls enters a first-person sedan session with a complete eight-step control sequence and feedback. Open World supports free exploration, an optional venue badge and session review; the other briefings show unavailable gameplay.
 - Escape pauses the exported course, and the session can restart or return to courses.
 - Scripted Godot checks cover transmission, attempt storage, and the full lesson flow. The macOS export launches and its first-person view was visually checked.
 - Physical controller testing, exported-app save/relaunch, and a manually driven end-to-end export check remain outstanding. Secondary Controls is the next course.
