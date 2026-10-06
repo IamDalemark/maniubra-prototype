@@ -42,7 +42,7 @@ var _context: Dictionary = {}
 func _ready() -> void:
 	_build_yard()
 	sedan = SEDAN_SCENE.instantiate()
-	sedan.position = Vector3(-2.7, 0.65, -42)
+	sedan.position = Vector3(-2.7, -0.05, -42)
 	add_child(sedan)
 	sedan.shift_rejected.connect(_on_shift_rejected)
 	_build_ui()
@@ -153,7 +153,7 @@ func _restart() -> void:
 	remove_child(old)
 	old.queue_free()
 	sedan = SEDAN_SCENE.instantiate()
-	sedan.position = Vector3(-2.7, 0.65, -42)
+	sedan.position = Vector3(-2.7, -0.05, -42)
 	add_child(sedan)
 	sedan.shift_rejected.connect(_on_shift_rejected)
 	start_attempt(_context)

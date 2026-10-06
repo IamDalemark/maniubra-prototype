@@ -125,9 +125,9 @@ func _shift(direction: int) -> void:
 func _build_vehicle() -> void:
 	var collision := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
-	shape.size = Vector3(1.82, 0.8, 4.05)
+	shape.size = Vector3(1.82, 0.74, 4.05)
 	collision.shape = shape
-	collision.position.y = 0.55
+	collision.position.y = 0.62
 	add_child(collision)
 	var roof_collision := CollisionShape3D.new()
 	var roof_shape := BoxShape3D.new()
@@ -138,7 +138,9 @@ func _build_vehicle() -> void:
 	for x in [-0.79, 0.79]:
 		for z in [-1.37, 1.37]:
 			var wheel := VehicleWheel3D.new()
-			wheel.position = Vector3(x, 0, z)
+			# Raise the suspension mounts relative to the chassis. This puts the
+			# vehicle origin/center of gravity low without shrinking the wheels.
+			wheel.position = Vector3(x, 0.50, z)
 			wheel.wheel_radius = 0.36
 			wheel.wheel_rest_length = 0.18
 			wheel.suspension_stiffness = 58.0
@@ -147,6 +149,8 @@ func _build_vehicle() -> void:
 			wheel.damping_compression = 1.35
 			wheel.damping_relaxation = 1.55
 			wheel.wheel_friction_slip = 1.0
+			# Keep ordinary cornering planted while allowing an extreme turn to tip.
+			wheel.wheel_roll_influence = 0.65
 			wheel.use_as_steering = z > 0
 			wheel.use_as_traction = z < 0
 			add_child(wheel)
