@@ -39,11 +39,20 @@ func _ready() -> void:
 	_build_audio()
 
 
+func _process(_delta: float) -> void:
+	# VehicleBody3D advances after physics callbacks. Follow its final transform
+	# just before rendering so the cockpit and eye remain in the same frame.
+	_update_camera()
+	_rear_camera.global_transform = global_transform * Transform3D(Basis.IDENTITY, Vector3(0, 1.76, -0.92))
+	for index in _side_cameras.size():
+		var side: float = -1.0 if index == 0 else 1.0
+		_side_cameras[index].global_transform = global_transform * Transform3D(Basis(Vector3.UP, -side * 0.72), Vector3(side * 1.0, 1.21, 0.69))
+
+
 func _physics_process(delta: float) -> void:
 	if not driving_enabled:
 		engine_force = 0.0
 		brake = 36.0
-		_update_camera(delta)
 		return
 	controls.update(delta)
 	var steering_limit := lerpf(0.42, 0.25, clampf(speed_mps() / 25.0, 0.0, 1.0))
@@ -69,11 +78,6 @@ func _physics_process(delta: float) -> void:
 	if look_axis.length() > 0.12:
 		_look_yaw = clampf(_look_yaw - look_axis.x * delta * 1.4, -2.2, 2.2)
 		_look_pitch = clampf(_look_pitch - look_axis.y * delta * 1.4, -0.55, 0.55)
-	_update_camera(delta)
-	_rear_camera.global_transform = global_transform * Transform3D(Basis.IDENTITY, Vector3(0, 1.76, -0.92))
-	for index in _side_cameras.size():
-		var side: float = -1.0 if index == 0 else 1.0
-		_side_cameras[index].global_transform = global_transform * Transform3D(Basis(Vector3.UP, -side * 0.72), Vector3(side * 1.0, 1.21, 0.69))
 
 
 func _input(event: InputEvent) -> void:
@@ -88,7 +92,7 @@ func _input(event: InputEvent) -> void:
 			return
 		_look_yaw = clampf(_look_yaw - event.relative.x * 0.0023, -2.2, 2.2)
 		_look_pitch = clampf(_look_pitch - event.relative.y * 0.0023, -0.55, 0.55)
-		_update_camera(1.0)
+		_update_camera()
 
 
 func speed_mps() -> float:
@@ -99,7 +103,7 @@ func prepare_mouse_capture() -> void:
 	_look_yaw = 0.0
 	_look_pitch = 0.0
 	_ignore_mouse_until_msec = Time.get_ticks_msec() + 400
-	_update_camera(1.0)
+	_update_camera()
 
 
 func set_audio_level(level: float) -> void:
@@ -242,10 +246,12 @@ func _build_cockpit() -> void:
 		_box(self, Vector3(0.26, 0.12, 0.13), Vector3(x, 1.12, 0.68), Color("252c2e"), 0.5)
 
 
-func _update_camera(delta: float) -> void:
+func _update_camera() -> void:
 	var yaw_only := Basis(Vector3.UP, global_rotation.y)
 	var eye := global_position + yaw_only * Vector3(0.40, 1.45, -0.40)
-	camera.global_position = camera.global_position.lerp(eye, clampf(delta * 12.0, 0.0, 1.0))
+	# The eye must travel with the cockpit. Smoothing its world position makes
+	# the seat move away from the camera as speed rises, causing visible shake.
+	camera.global_position = eye
 	camera.global_rotation = Vector3(_look_pitch, global_rotation.y + PI + _look_yaw, 0.0)
 
 

@@ -67,6 +67,9 @@ func verify() -> void:
 	Input.action_release("drive_clutch")
 	Input.action_press("drive_throttle")
 	assert(await reach_step(session, 2, 720))
+	await create_timer(0.0).timeout
+	var expected_eye: Vector3 = car.global_position + Basis(Vector3.UP, car.global_rotation.y) * Vector3(0.40, 1.45, -0.40)
+	assert(car.camera.global_position.distance_to(expected_eye) < 0.01)
 	Input.action_press("drive_clutch")
 	await frames(16)
 	await shift("drive_gear_up")
