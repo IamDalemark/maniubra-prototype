@@ -12,6 +12,8 @@ The sedan's suspension mounts now sit 0.5 m higher relative to the chassis, lowe
 
 The engine and road WAVs have complete loop ranges. The engine loop starts with H and stops on ignition off or stall; the road loop continues during a lesson. The audio volume setting mutes and restores both sounds; engine pitch follows RPM and road sound grows with speed.
 
+When a shift is rejected, the engine stalls, or an ignition attempt is blocked, a short-lived toast appears at the upper right with the corrective action. The event remains in the attempt's "What happened" review. See the [toast in the cockpit](docs/screenshots/error_toast.png).
+
 | Action | Keyboard and mouse |
 |---|---|
 | Start / stop engine | H |
@@ -47,5 +49,6 @@ The next course milestone is Secondary Controls. First finish an exported-app sa
 - `tests/vehicle_stability.gd` passed on a flat Jolt test surface: a full-lock turn starting near 30 km/h stayed below 5° lean with all wheels contacting, while a full-lock turn starting near 54 km/h tipped. The lowered cockpit was visually checked in the exported app; a manually driven exported-app cornering run is still pending.
 - `tests/audio_playback.gd` passed: both two-second WAV loops were still playing after 3.2 seconds, and the volume setting muted and restored both players. A graphical macOS audio probe measured a live signal on the Master bus after the loop fix; an audible check by the user on their chosen output device remains useful.
 - `tests/training_lot.gd` passed: four collidable boundary walls surround the lot, the sedan starts in the clear launch lane, and 17 collidable cones populate the practice area. A native Metal-rendered cockpit and overhead map were inspected and saved in `docs/screenshots/`.
+- The full-lesson flow check verifies the right-side toast for rejected shifts, stalls, and blocked starts, its timed dismissal, and its removal after a successful restart. The toast was also visually checked in a native Metal render.
 - The earlier release export rebuilt and launched on macOS 26.3.1 (Apple M4 Pro). Its course selection, briefing, straight-ahead first-person view, animated hands, and RPM readout were visually checked in the exported app. Full-resolution lesson and roundabout-map captures were saved. The complete driven run was verified by the scripted Godot check; the roundabout has not yet had a manual exported-app driving playthrough.
 - Persistence was verified with a temporary save override; normal exported-app save/relaunch remains unverified. No physical controller or wheel has been tested. Restricted command-line Godot prints a macOS system-certificate access error and may fail to save global editor settings, despite successful project checks and export.

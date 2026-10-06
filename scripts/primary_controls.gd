@@ -26,6 +26,10 @@ var sedan
 var _hud: Label
 var _prompt: Label
 var _feedback: Label
+var _toast_panel: PanelContainer
+var _toast_title: Label
+var _toast_detail: Label
+var _toast_remaining := 0.0
 var _pause_panel: PanelContainer
 var _pause_center: CenterContainer
 var _started := false
@@ -60,6 +64,7 @@ func start_attempt(context: Dictionary) -> void:
 	_elapsed = 0.0
 	_events.clear()
 	_last_notice = ""
+	_hide_error_toast()
 	_start_z = sedan.global_position.z
 	_steer_x = sedan.global_position.x
 	_reverse_z = sedan.global_position.z
@@ -104,6 +109,15 @@ func _physics_process(delta: float) -> void:
 	_update_ui()
 
 
+func _process(delta: float) -> void:
+	if not _started or _paused or _toast_remaining <= 0.0:
+		return
+	_toast_remaining = maxf(_toast_remaining - delta, 0.0)
+	_toast_panel.modulate.a = minf(_toast_remaining / 0.35, 1.0)
+	if _toast_remaining == 0.0:
+		_toast_panel.visible = false
+
+
 func _input(event: InputEvent) -> void:
 	if not _started:
 		return
@@ -128,6 +142,7 @@ func _on_shift_rejected() -> void:
 		return
 	_events.append({"type": "shift_rejected", "elapsed_seconds": snappedf(_elapsed, 0.01), "detail": "Gear change attempted without depressing the clutch."})
 	_last_notice = "Depress the clutch before shifting."
+	_show_error_toast("SHIFT ERROR", _last_notice)
 
 
 func _on_engine_state_changed(running: bool, stalled: bool) -> void:
@@ -137,6 +152,10 @@ func _on_engine_state_changed(running: bool, stalled: bool) -> void:
 	var detail := "Engine stalled. Hold C and press H to restart." if stalled else ("Engine started." if running else "Engine switched off with H.")
 	_events.append({"type": event_type, "elapsed_seconds": snappedf(_elapsed, 0.01), "detail": detail})
 	_last_notice = detail
+	if stalled:
+		_show_error_toast("ENGINE STALLED", detail)
+	elif running:
+		_hide_error_toast()
 
 
 func _on_ignition_rejected() -> void:
@@ -145,6 +164,21 @@ func _on_ignition_rejected() -> void:
 	var detail := "Hold C or select neutral before starting the engine."
 	_events.append({"type": "ignition_rejected", "elapsed_seconds": snappedf(_elapsed, 0.01), "detail": detail})
 	_last_notice = detail
+	_show_error_toast("START BLOCKED", detail)
+
+
+func _show_error_toast(title: String, detail: String) -> void:
+	_toast_title.text = "!  " + title
+	_toast_detail.text = detail
+	_toast_remaining = 4.5
+	_toast_panel.modulate.a = 1.0
+	_toast_panel.visible = true
+
+
+func _hide_error_toast() -> void:
+	_toast_remaining = 0.0
+	if _toast_panel != null:
+		_toast_panel.visible = false
 
 
 func _finish() -> void:
@@ -445,6 +479,7 @@ func _build_ui() -> void:
 	var hint := _label(15, Color("f2e5c7"))
 	hint.text = "H engine  W throttle  S brake  A/D steer  C clutch  E/Q gears  Space handbrake  R restart  Esc pause  Mouse look"
 	layout.add_child(hint)
+	_build_error_toast(layer)
 	_pause_center = CenterContainer.new()
 	_pause_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_pause_center.visible = false
@@ -471,6 +506,39 @@ func _build_ui() -> void:
 	exit_button.text = "Exit to courses"
 	exit_button.pressed.connect(_exit)
 	buttons.add_child(exit_button)
+
+
+func _build_error_toast(layer: CanvasLayer) -> void:
+	_toast_panel = PanelContainer.new()
+	_toast_panel.name = "ErrorToast"
+	_toast_panel.anchor_left = 1.0
+	_toast_panel.anchor_right = 1.0
+	_toast_panel.offset_left = -390.0
+	_toast_panel.offset_right = -24.0
+	_toast_panel.offset_top = 24.0
+	_toast_panel.offset_bottom = 122.0
+	_toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_toast_panel.visible = false
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("18232b")
+	style.border_width_left = 5
+	style.border_color = Color("f2a93b")
+	style.set_corner_radius_all(8)
+	style.shadow_color = Color(0, 0, 0, 0.35)
+	style.shadow_size = 8
+	_toast_panel.add_theme_stylebox_override("panel", style)
+	layer.add_child(_toast_panel)
+	var padding := MarginContainer.new()
+	for edge in ["left", "right", "top", "bottom"]:
+		padding.add_theme_constant_override("margin_" + edge, 14)
+	_toast_panel.add_child(padding)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 4)
+	padding.add_child(content)
+	_toast_title = _label(16, Color("f2b64e"))
+	content.add_child(_toast_title)
+	_toast_detail = _label(16, Color("f8f4e9"))
+	content.add_child(_toast_detail)
 
 
 func _label(size: int, color: Color) -> Label:
