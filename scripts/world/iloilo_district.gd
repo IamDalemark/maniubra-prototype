@@ -232,7 +232,19 @@ func _build_destination() -> void:
 	for edge in [-1.0, 1.0]:
 		_box(Vector3(0.18, 0.022, DESTINATION_SIZE.y), DESTINATION + Vector3(edge * DESTINATION_SIZE.x * 0.5, 0.031, 0), paint, false)
 		_box(Vector3(DESTINATION_SIZE.x, 0.022, 0.18), DESTINATION + Vector3(0, 0.031, edge * DESTINATION_SIZE.y * 0.5), paint, false)
-	_sign("MOLO PLAZA STOP", Vector3(220, 2.6, 219), -PI / 2.0)
+	# A roadside venue board is readable from the cockpit without a HUD waypoint.
+	_box(Vector3(0.18, 1.75, 5.5), Vector3(219.0, 3.45, 221), Color("223f4b"), false)
+	for z in [218.9, 223.1]:
+		_box(Vector3(0.2, 2.65, 0.2), Vector3(219.0, 1.32, z), Color("566a6b"), false)
+	var venue_label := Label3D.new()
+	venue_label.text = "MOLO PLAZA"
+	venue_label.font_size = 110
+	venue_label.pixel_size = 0.006
+	venue_label.modulate = Color("f9e5a7")
+	venue_label.double_sided = true
+	venue_label.position = Vector3(218.86, 3.45, 221)
+	venue_label.rotation.y = -PI / 2.0
+	add_child(venue_label)
 
 
 func _build_bounds() -> void:
