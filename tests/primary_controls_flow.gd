@@ -73,6 +73,8 @@ func verify() -> void:
 	assert(car._seatbelt_hand_timer > 0.0)
 	await frames(14)
 	assert(car._right_hand.position.distance_to(right_on_wheel) > 0.06)
+	assert(car._right_hand.position.x > car._steering_visual.position.x + 0.15)
+	assert(car._right_hand.position.y > right_on_wheel.y + 0.10)
 	session._set_paused(true)
 	await process_frame
 	assert(Input.mouse_mode == Input.MOUSE_MODE_VISIBLE)

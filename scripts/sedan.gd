@@ -365,7 +365,8 @@ func _update_hands(delta: float) -> void:
 	if brake_reach > 0.0:
 		right_target = right_grip.lerp(handbrake_grip, brake_reach)
 	elif belt_reach > 0.0:
-		right_target = right_grip.lerp(Vector3(0.12, 1.34, -0.16), belt_reach)
+		# Reach across the chest toward the driver's left shoulder.
+		right_target = right_grip.lerp(Vector3(0.57, 1.33, -0.08), belt_reach)
 	_left_hand.position = left_grip
 	_right_hand.position = right_target
 	_left_hand.rotation.z = _steering_visual.rotation.z
