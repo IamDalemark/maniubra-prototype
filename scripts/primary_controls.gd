@@ -26,6 +26,9 @@ var sedan
 var _hud: Label
 var _prompt: Label
 var _feedback: Label
+var _seatbelt_status: Label
+var _seatbelt_button: Button
+var _handbrake_status: Label
 var _toast_panel: PanelContainer
 var _toast_title: Label
 var _toast_detail: Label
@@ -121,7 +124,14 @@ func _process(delta: float) -> void:
 func _input(event: InputEvent) -> void:
 	if not _started:
 		return
-	if event.is_action_pressed("ui_cancel"):
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_TAB and not _paused:
+		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		else:
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+			sedan.prepare_mouse_capture()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("ui_cancel"):
 		_set_paused(not _paused)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("drive_reset") and not _paused:
@@ -245,9 +255,14 @@ func _update_ui() -> void:
 		return
 	var gear_name := "R" if sedan.gearbox.gear == -1 else ("N" if sedan.gearbox.gear == 0 else str(sedan.gearbox.gear))
 	var engine_status := "RUNNING" if sedan.gearbox.engine_running else ("STALLED" if sedan.gearbox.engine_stalled else "OFF")
-	_hud.text = "SPEED  %02d km/h     RPM  %04d     GEAR  %s     ENGINE  %s\nCLUTCH  %d%%     HANDBRAKE  %s" % [roundi(sedan.speed_mps() * 3.6), roundi(sedan.gearbox.engine_rpm), gear_name, engine_status, roundi(sedan.controls.clutch * 100), "ON" if sedan.controls.handbrake else "OFF"]
+	_hud.text = "SPEED  %02d km/h     RPM  %04d     GEAR  %s     ENGINE  %s\nCLUTCH  %d%%     HANDBRAKE  %s     SEATBELT  %s" % [roundi(sedan.speed_mps() * 3.6), roundi(sedan.gearbox.engine_rpm), gear_name, engine_status, roundi(sedan.controls.clutch * 100), "ON" if sedan.controls.handbrake else "OFF", "ON" if sedan.seatbelt_fastened else "OFF"]
 	_prompt.text = "PRIMARY CONTROLS   •   %d / %d\n%s" % [mini(_step + 1, STEP_TEXT.size()), STEP_TEXT.size(), STEP_TEXT[mini(_step, STEP_TEXT.size() - 1)]]
 	_feedback.text = _last_notice
+	_seatbelt_status.text = "SEATBELT  •  FASTENED" if sedan.seatbelt_fastened else "SEATBELT  •  UNFASTENED"
+	_seatbelt_status.add_theme_color_override("font_color", Color("a4dfbb") if sedan.seatbelt_fastened else Color("f5c568"))
+	_seatbelt_button.text = "Unfasten seatbelt  [B]" if sedan.seatbelt_fastened else "Fasten seatbelt  [B]"
+	_handbrake_status.text = "HANDBRAKE  •  APPLIED" if sedan.controls.handbrake else "HANDBRAKE  •  RELEASED"
+	_handbrake_status.add_theme_color_override("font_color", Color("f5c568") if sedan.controls.handbrake else Color("a4dfbb"))
 
 
 func _build_yard() -> void:
@@ -471,13 +486,14 @@ func _build_ui() -> void:
 	layout.add_child(_prompt)
 	_feedback = _label(17, Color("a4dfbb"))
 	layout.add_child(_feedback)
+	_build_driver_check(layout)
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	layout.add_child(spacer)
 	_hud = _label(22, Color("f7f5e9"))
 	layout.add_child(_hud)
 	var hint := _label(15, Color("f2e5c7"))
-	hint.text = "H engine  W throttle  S brake  A/D steer  C clutch  E/Q gears  Space handbrake  R restart  Esc pause  Mouse look"
+	hint.text = "H engine  B seatbelt  W throttle  S brake  A/D steer  C clutch  E/Q gears  Space handbrake  Tab cursor  R restart  Esc pause"
 	layout.add_child(hint)
 	_build_error_toast(layer)
 	_pause_center = CenterContainer.new()
@@ -506,6 +522,44 @@ func _build_ui() -> void:
 	exit_button.text = "Exit to courses"
 	exit_button.pressed.connect(_exit)
 	buttons.add_child(exit_button)
+
+
+func _build_driver_check(layout: VBoxContainer) -> void:
+	var row := HBoxContainer.new()
+	layout.add_child(row)
+	var panel := PanelContainer.new()
+	panel.name = "DriverCheck"
+	panel.custom_minimum_size.x = 280.0
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.08, 0.13, 0.15, 0.88)
+	style.border_width_left = 4
+	style.border_color = Color("d6a23f")
+	style.set_corner_radius_all(7)
+	panel.add_theme_stylebox_override("panel", style)
+	row.add_child(panel)
+	var margin := MarginContainer.new()
+	for edge in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + edge, 11)
+	panel.add_child(margin)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 4)
+	margin.add_child(content)
+	var heading := _label(15, Color("f5c568"))
+	heading.text = "DRIVER CHECK"
+	content.add_child(heading)
+	_seatbelt_status = _label(15, Color("f5c568"))
+	content.add_child(_seatbelt_status)
+	_seatbelt_button = Button.new()
+	_seatbelt_button.name = "SeatbeltButton"
+	_seatbelt_button.focus_mode = Control.FOCUS_NONE
+	_seatbelt_button.tooltip_text = "Press Tab to show the cursor, or press B at any time."
+	_seatbelt_button.pressed.connect(func(): sedan.toggle_seatbelt(); _update_ui())
+	content.add_child(_seatbelt_button)
+	_handbrake_status = _label(15, Color("a4dfbb"))
+	content.add_child(_handbrake_status)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(spacer)
 
 
 func _build_error_toast(layer: CanvasLayer) -> void:

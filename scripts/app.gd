@@ -298,7 +298,7 @@ func _show_briefing(lesson_id: String) -> void:
 		_add_text("This lesson is not available yet.", 18, Color("e5c98c"))
 		_add_button("Start lesson — coming soon", func(): pass).disabled = true
 	else:
-		_add_text("Controls: H engine · W throttle · S brake · A/D steer · hold C clutch · E/Q gears · Space handbrake · mouse look · Esc pause.\nReach each practice goal, then review your result.", 17, Color("d4e7d6"))
+		_add_text("Controls: H engine · B seatbelt · W throttle · S brake · A/D steer · hold C clutch · E/Q gears · hold Space handbrake · mouse look · Tab cursor · Esc pause.\nReach each practice goal, then review your result.", 17, Color("d4e7d6"))
 		var previous := AttemptStore.load_attempts()
 		var same_count := 0
 		for attempt in previous:

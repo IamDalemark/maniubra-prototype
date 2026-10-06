@@ -5,6 +5,7 @@ signal shift_rejected
 signal gear_changed(gear: int)
 signal engine_state_changed(running: bool, stalled: bool)
 signal ignition_rejected
+signal seatbelt_changed(fastened: bool)
 
 const DrivingInput = preload("res://scripts/driving_input.gd")
 const ManualTransmission = preload("res://scripts/manual_transmission.gd")
@@ -12,11 +13,13 @@ const ManualTransmission = preload("res://scripts/manual_transmission.gd")
 var controls = DrivingInput.new()
 var gearbox = ManualTransmission.new()
 var driving_enabled := true
+var seatbelt_fastened := false
 var camera: Camera3D
 var _rear_camera: Camera3D
 var _side_cameras: Array[Camera3D] = []
 var _steering_visual: MeshInstance3D
 var _lever: MeshInstance3D
+var _handbrake_lever: Node3D
 var _speed_needle: Node3D
 var _rpm_needle: Node3D
 var _gear_display: Label3D
@@ -66,6 +69,8 @@ func _physics_process(delta: float) -> void:
 	controls.update(delta)
 	if Input.is_action_just_pressed("drive_ignition"):
 		_toggle_ignition()
+	if Input.is_action_just_pressed("drive_seatbelt"):
+		toggle_seatbelt()
 	if gearbox.update_stall(controls.throttle, controls.clutch, controls.brake, speed_mps(), delta):
 		_sync_engine_audio()
 		engine_state_changed.emit(false, true)
@@ -76,6 +81,7 @@ func _physics_process(delta: float) -> void:
 	gearbox.update_rpm(controls.throttle, controls.clutch, speed_mps() * 3.6, delta)
 	_steering_visual.rotation.z = -controls.steering * 0.8
 	_lever.rotation.x = float(gearbox.gear) * 0.06
+	_handbrake_lever.rotation.x = move_toward(_handbrake_lever.rotation.x, 0.38 if controls.handbrake else 0.0, delta * 4.0)
 	_update_hands(delta)
 	_speed_needle.rotation.z = -2.2 + minf(speed_mps() * 3.6 / 120.0, 1.0) * 4.4
 	_rpm_needle.rotation.z = -2.2 + clampf((gearbox.engine_rpm - gearbox.IDLE_RPM) / (gearbox.REDLINE_RPM - gearbox.IDLE_RPM), 0.0, 1.0) * 4.4
@@ -122,6 +128,11 @@ func prepare_mouse_capture() -> void:
 func set_audio_level(level: float) -> void:
 	audio_level = clampf(level, 0.0, 1.0)
 	_update_audio_mix()
+
+
+func toggle_seatbelt() -> void:
+	seatbelt_fastened = not seatbelt_fastened
+	seatbelt_changed.emit(seatbelt_fastened)
 
 
 func _toggle_ignition() -> void:
@@ -269,6 +280,15 @@ func _build_cockpit() -> void:
 	_box(_steering_visual, Vector3(0.13, 0.13, 0.10), Vector3.ZERO, Color("a2b7ae"), 0.4)
 	_lever = _box(self, Vector3(0.055, 0.34, 0.055), Vector3(-0.09, 1.06, -0.02), Color("b6c2bd"), 0.35)
 	_box(_lever, Vector3(0.13, 0.11, 0.13), Vector3(0, 0.18, 0), Color("182326"), 0.85)
+	# Center-console parking brake: its grip rises whenever Space is held.
+	_box(self, Vector3(0.18, 0.06, 0.34), Vector3(-0.04, 1.14, 0.64), Color("222b2d"), 0.8)
+	_handbrake_lever = Node3D.new()
+	_handbrake_lever.name = "HandbrakeLever"
+	_handbrake_lever.position = Vector3(-0.04, 1.16, 0.72)
+	add_child(_handbrake_lever)
+	_box(_handbrake_lever, Vector3(0.045, 0.045, 0.30), Vector3(0, 0.035, -0.14), Color("a9b4af"), 0.36)
+	_box(_handbrake_lever, Vector3(0.075, 0.065, 0.16), Vector3(0, 0.035, -0.27), Color("172124"), 0.82)
+	_box(_handbrake_lever, Vector3(0.07, 0.035, 0.04), Vector3(0, 0.075, -0.35), Color("d8a545"), 0.48)
 	_build_hands()
 	for x in [-0.44, 0.44]:
 		_box(self, Vector3(0.51, 0.035, 0.28), Vector3(x, 1.88, 0.31), Color("454b4a"), 0.9)

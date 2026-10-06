@@ -2,7 +2,7 @@
 
 Planning baseline: 6 October 2026. This is a proposed implementation plan, not a claim that the features already exist.
 
-Implementation update: the four-course menu launches an eight-step first-person Primary Controls lesson in an enclosed 160 × 240 m driving-school lot. The manual sedan has H-key ignition, low-speed engine stalling that shuts off propulsion and audio, animated hands, RPM feedback, and an appropriately stable cockpit camera. The lot has a clear launch lane, parking bays, 17 physical traffic cones, and a circular practice loop, with Philippine-inspired scenery beyond its walls. Local attempt history records stalls and shift errors; other lessons remain unavailable. See `README.md`, `docs/ARCHITECTURE.md`, and `docs/AGENT_IMPLEMENTATION.md` for current implementation and verification. The connection-check section below records the earlier pre-scaffold state.
+Implementation update: the four-course menu launches an eight-step first-person Primary Controls lesson in an enclosed 160 × 240 m driving-school lot. The manual sedan has H-key ignition, a B-key/clickable seatbelt practice control, an animated center handbrake lever, low-speed engine stalling that shuts off propulsion and audio, animated hands, RPM feedback, and an appropriately stable cockpit camera. The lot has a clear launch lane, parking bays, 17 physical traffic cones, and a circular practice loop, with Philippine-inspired scenery beyond its walls. Local attempt history records stalls and shift errors; other lessons remain unavailable. See `README.md`, `docs/ARCHITECTURE.md`, and `docs/AGENT_IMPLEMENTATION.md` for current implementation and verification. The connection-check section below records the earlier pre-scaffold state.
 
 ## Goal and scope
 

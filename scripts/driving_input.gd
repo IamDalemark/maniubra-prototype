@@ -11,6 +11,9 @@ var last_device := "keyboard_mouse"
 
 static func install_actions() -> void:
 	if InputMap.has_action("drive_left"):
+		# A running editor session may already have the older input set installed.
+		if not InputMap.has_action("drive_seatbelt"):
+			_key("drive_seatbelt", KEY_B)
 		return
 	_key("drive_left", KEY_A)
 	_key("drive_right", KEY_D)
@@ -22,6 +25,7 @@ static func install_actions() -> void:
 	_key("drive_gear_down", KEY_Q)
 	_key("drive_reset", KEY_R)
 	_key("drive_ignition", KEY_H)
+	_key("drive_seatbelt", KEY_B)
 	_axis("drive_left", JOY_AXIS_LEFT_X, -1.0)
 	_axis("drive_right", JOY_AXIS_LEFT_X, 1.0)
 	_axis("drive_throttle", JOY_AXIS_TRIGGER_RIGHT, 1.0)

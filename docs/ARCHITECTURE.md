@@ -35,7 +35,7 @@ AGENTS.md                    Repository rules
 
 `app.gd` owns the menu controls and current navigation state. `course_catalog.gd` contains curriculum data only and returns copies of its data. Course IDs are `primary_controls`, `secondary_controls`, `maneuvers`, and `open_world`. The catalog holds one initial combined lesson for each controls course, nine maneuver lessons, and one open-world lesson.
 
-Primary Controls has a real scene path and is selectable. The other briefings accurately show unavailable lessons. `app.gd` owns image-card selection, session creation/removal, a timestamped result timeline, saved results, and retry; `primary_controls.gd` owns its exercise, feedback, and upper-right error toast. Rejected shifts, stalls, and blocked ignition show a timed corrective toast while their events remain in attempt history. There is no numeric pass/fail score. UI controls are built in scripts to keep the prototype small; extract dedicated scenes only when presentation work makes that useful.
+Primary Controls has a real scene path and is selectable. The other briefings accurately show unavailable lessons. `app.gd` owns image-card selection, session creation/removal, a timestamped result timeline, saved results, and retry; `primary_controls.gd` owns its exercise, feedback, upper-left driver check, and upper-right error toast. Rejected shifts, stalls, and blocked ignition show a timed corrective toast while their events remain in attempt history. The driver check reads sedan seatbelt state and handbrake input; its seatbelt button calls the same toggle as the B key. The seatbelt currently affects presentation only. There is no numeric pass/fail score. UI controls are built in scripts to keep the prototype small; extract dedicated scenes only when presentation work makes that useful.
 
 ## Current ownership
 
@@ -69,7 +69,7 @@ Input and transmission are small scripts owned by the vehicle, with focused chec
 
 **Session lifecycle:** App loads the selected scene, calls `start_attempt(context)`, and connects `attempt_finished(result)` and `exit_requested`. Context starts with `course_id`, `lesson_id`, `vehicle_id`, and `input_profile_id`. Add scenario and assessment versions when saving begins. Restart resets all owned nodes or reconstructs the session; it never reuses the previous event list. App frees the session and releases captured mouse input before showing menus.
 
-**Driving input:** expose steering in `[-1, 1]`, throttle/brake/clutch in `[0, 1]`, handbrake state, and gear-selection requests. Define clutch `1` as pedal fully depressed/disengaged and `0` as released/engaged. Digital controls may ramp their values; physical analog axes must be calibrated. The same semantic inputs drive every supported device.
+**Driving input:** expose steering in `[-1, 1]`, throttle/brake/clutch in `[0, 1]`, handbrake state, seatbelt toggle requests, and gear-selection requests. Define clutch `1` as pedal fully depressed/disengaged and `0` as released/engaged. Digital controls may ramp their values; physical analog axes must be calibrated. The same semantic inputs drive every supported device.
 
 **Vehicle state:** expose speed in meters/second internally, selected gear (`-1` reverse, `0` neutral, positive forward gears), clutch engagement, transform, and relevant control states. Convert to km/h for display with `m/s × 3.6`. Gear count and ratios are tuning choices, not new product scope.
 

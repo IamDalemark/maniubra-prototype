@@ -14,14 +14,18 @@ The engine and road WAVs have complete loop ranges. The engine loop starts with 
 
 When a shift is rejected, the engine stalls, or an ignition attempt is blocked, a short-lived toast appears at the upper right with the corrective action. The event remains in the attempt's "What happened" review. See the [toast in the cockpit](docs/screenshots/error_toast.png).
 
+The upper-left driver check reminds you whether the seatbelt is fastened and the handbrake is applied. Press **B** to toggle the seatbelt, or press **Tab** to show the cursor and click its button; press Tab again to resume mouse look. Holding **Space** applies the handbrake and raises the visible lever beside the center display. See the [released](docs/screenshots/driver_check_released.png) and [applied](docs/screenshots/driver_check_applied.png) views. The seatbelt is a practice control and indicator; it does not yet change crash physics or the lesson result.
+
 | Action | Keyboard and mouse |
 |---|---|
 | Start / stop engine | H |
+| Fasten / unfasten seatbelt | B, or click the upper-left button with the cursor shown |
 | Steer | A / D |
 | Accelerate / brake | W / S |
 | Depress clutch | Hold C |
 | Shift up / down | E / Q |
-| Handbrake | Space |
+| Handbrake | Hold Space |
+| Show cursor / resume mouse look | Tab |
 | Look around | Mouse |
 | Pause / resume | Escape |
 | Restart lesson | R |
@@ -50,5 +54,6 @@ The next course milestone is Secondary Controls. First finish an exported-app sa
 - `tests/audio_playback.gd` passed: both two-second WAV loops were still playing after 3.2 seconds, and the volume setting muted and restored both players. A graphical macOS audio probe measured a live signal on the Master bus after the loop fix; an audible check by the user on their chosen output device remains useful.
 - `tests/training_lot.gd` passed: four collidable boundary walls surround the lot, the sedan starts in the clear launch lane, and 17 collidable cones populate the practice area. A native Metal-rendered cockpit and overhead map were inspected and saved in `docs/screenshots/`.
 - The full-lesson flow check verifies the right-side toast for rejected shifts, stalls, and blocked starts, its timed dismissal, and its removal after a successful restart. The toast was also visually checked in a native Metal render.
+- The same flow check verifies B-key and button seatbelt toggles, the upper-left handbrake reminder, and raised/released lever positions. Both cockpit states were visually inspected in native Metal renders.
 - The earlier release export rebuilt and launched on macOS 26.3.1 (Apple M4 Pro). Its course selection, briefing, straight-ahead first-person view, animated hands, and RPM readout were visually checked in the exported app. Full-resolution lesson and roundabout-map captures were saved. The complete driven run was verified by the scripted Godot check; the roundabout has not yet had a manual exported-app driving playthrough.
 - Persistence was verified with a temporary save override; normal exported-app save/relaunch remains unverified. No physical controller or wheel has been tested. Restricted command-line Godot prints a macOS system-certificate access error and may fail to save global editor settings, despite successful project checks and export.
