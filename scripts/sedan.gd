@@ -280,15 +280,15 @@ func _build_cockpit() -> void:
 	_box(_steering_visual, Vector3(0.13, 0.13, 0.10), Vector3.ZERO, Color("a2b7ae"), 0.4)
 	_lever = _box(self, Vector3(0.055, 0.34, 0.055), Vector3(-0.09, 1.06, -0.02), Color("b6c2bd"), 0.35)
 	_box(_lever, Vector3(0.13, 0.11, 0.13), Vector3(0, 0.18, 0), Color("182326"), 0.85)
-	# Center-console parking brake: its grip rises whenever Space is held.
-	_box(self, Vector3(0.18, 0.06, 0.34), Vector3(-0.04, 1.14, 0.64), Color("222b2d"), 0.8)
+	# Parking brake sits beside the driver's right hand on the side console.
+	_box(self, Vector3(0.12, 0.05, 0.25), Vector3(0.12, 1.16, 0.34), Color("222b2d"), 0.8)
 	_handbrake_lever = Node3D.new()
 	_handbrake_lever.name = "HandbrakeLever"
-	_handbrake_lever.position = Vector3(-0.04, 1.16, 0.72)
+	_handbrake_lever.position = Vector3(0.12, 1.21, 0.43)
 	add_child(_handbrake_lever)
-	_box(_handbrake_lever, Vector3(0.045, 0.045, 0.30), Vector3(0, 0.035, -0.14), Color("a9b4af"), 0.36)
-	_box(_handbrake_lever, Vector3(0.075, 0.065, 0.16), Vector3(0, 0.035, -0.27), Color("172124"), 0.82)
-	_box(_handbrake_lever, Vector3(0.07, 0.035, 0.04), Vector3(0, 0.075, -0.35), Color("d8a545"), 0.48)
+	_box(_handbrake_lever, Vector3(0.03, 0.03, 0.21), Vector3(0, 0.025, -0.09), Color("a9b4af"), 0.36)
+	_box(_handbrake_lever, Vector3(0.05, 0.045, 0.11), Vector3(0, 0.025, -0.19), Color("172124"), 0.82)
+	_box(_handbrake_lever, Vector3(0.045, 0.025, 0.025), Vector3(0, 0.050, -0.25), Color("d8a545"), 0.48)
 	_build_hands()
 	for x in [-0.44, 0.44]:
 		_box(self, Vector3(0.51, 0.035, 0.28), Vector3(x, 1.88, 0.31), Color("454b4a"), 0.9)

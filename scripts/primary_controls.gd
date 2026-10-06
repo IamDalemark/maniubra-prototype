@@ -124,14 +124,7 @@ func _process(delta: float) -> void:
 func _input(event: InputEvent) -> void:
 	if not _started:
 		return
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_TAB and not _paused:
-		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-		else:
-			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-			sedan.prepare_mouse_capture()
-		get_viewport().set_input_as_handled()
-	elif event.is_action_pressed("ui_cancel"):
+	if event.is_action_pressed("ui_cancel"):
 		_set_paused(not _paused)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("drive_reset") and not _paused:
@@ -493,11 +486,12 @@ func _build_ui() -> void:
 	_hud = _label(22, Color("f7f5e9"))
 	layout.add_child(_hud)
 	var hint := _label(15, Color("f2e5c7"))
-	hint.text = "H engine  B seatbelt  W throttle  S brake  A/D steer  C clutch  E/Q gears  Space handbrake  Tab cursor  R restart  Esc pause"
+	hint.text = "H engine  B seatbelt  W throttle  S brake  A/D steer  C clutch  E/Q gears  Space handbrake  R restart  Esc pause"
 	layout.add_child(hint)
 	_build_error_toast(layer)
 	_pause_center = CenterContainer.new()
 	_pause_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_pause_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_pause_center.visible = false
 	layer.add_child(_pause_center)
 	_pause_panel = PanelContainer.new()
@@ -552,7 +546,7 @@ func _build_driver_check(layout: VBoxContainer) -> void:
 	_seatbelt_button = Button.new()
 	_seatbelt_button.name = "SeatbeltButton"
 	_seatbelt_button.focus_mode = Control.FOCUS_NONE
-	_seatbelt_button.tooltip_text = "Press Tab to show the cursor, or press B at any time."
+	_seatbelt_button.tooltip_text = "Press B while driving, or click here while paused."
 	_seatbelt_button.pressed.connect(func(): sedan.toggle_seatbelt(); _update_ui())
 	content.add_child(_seatbelt_button)
 	_handbrake_status = _label(15, Color("a4dfbb"))

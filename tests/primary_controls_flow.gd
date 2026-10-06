@@ -22,6 +22,24 @@ func shift(action: String) -> void:
 	await physics_frame
 
 
+func click_button(button: Button) -> void:
+	var point := button.get_global_rect().get_center()
+	var down := InputEventMouseButton.new()
+	down.button_index = MOUSE_BUTTON_LEFT
+	down.position = point
+	down.global_position = point
+	down.pressed = true
+	root.push_input(down, true)
+	await process_frame
+	var up := InputEventMouseButton.new()
+	up.button_index = MOUSE_BUTTON_LEFT
+	up.position = point
+	up.global_position = point
+	up.pressed = false
+	root.push_input(up, true)
+	await process_frame
+
+
 func reach_step(session: Node, wanted: int, maximum: int) -> bool:
 	for index in maximum:
 		if session._step >= wanted:
@@ -51,16 +69,14 @@ func verify() -> void:
 	assert(session._seatbelt_status.text.contains("UNFASTENED"))
 	await shift("drive_seatbelt")
 	assert(car.seatbelt_fastened and session._seatbelt_status.text.contains("FASTENED"))
-	var cursor_key := InputEventKey.new()
-	cursor_key.keycode = KEY_TAB
-	cursor_key.pressed = true
-	session._input(cursor_key)
+	session._set_paused(true)
+	await process_frame
 	assert(Input.mouse_mode == Input.MOUSE_MODE_VISIBLE)
-	session._seatbelt_button.pressed.emit()
+	await click_button(session._seatbelt_button)
 	assert(not car.seatbelt_fastened)
-	session._seatbelt_button.pressed.emit()
+	await click_button(session._seatbelt_button)
 	assert(car.seatbelt_fastened)
-	session._input(cursor_key)
+	session._set_paused(false)
 	await shift("drive_ignition")
 	assert(car.gearbox.engine_running and car._engine_audio.playing)
 	await shift("drive_gear_up")
@@ -78,7 +94,9 @@ func verify() -> void:
 	escape.pressed = true
 	session._input(escape)
 	assert(session._paused)
-	session._set_paused(false)
+	await process_frame
+	await click_button(session._pause_panel.get_node("Buttons/Resume"))
+	assert(not session._paused)
 	Input.action_press("drive_clutch")
 	await frames(18)
 	await shift("drive_gear_up")

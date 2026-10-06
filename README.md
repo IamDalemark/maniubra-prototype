@@ -14,18 +14,17 @@ The engine and road WAVs have complete loop ranges. The engine loop starts with 
 
 When a shift is rejected, the engine stalls, or an ignition attempt is blocked, a short-lived toast appears at the upper right with the corrective action. The event remains in the attempt's "What happened" review. See the [toast in the cockpit](docs/screenshots/error_toast.png).
 
-The upper-left driver check reminds you whether the seatbelt is fastened and the handbrake is applied. Press **B** to toggle the seatbelt, or press **Tab** to show the cursor and click its button; press Tab again to resume mouse look. Holding **Space** applies the handbrake and raises the visible lever beside the center display. See the [released](docs/screenshots/driver_check_released.png) and [applied](docs/screenshots/driver_check_applied.png) views. The seatbelt is a practice control and indicator; it does not yet change crash physics or the lesson result.
+The upper-left driver check reminds you whether the seatbelt is fastened and the handbrake is applied. Press **B** to toggle the seatbelt while driving. Its button is also clickable while paused, when the cursor is already visible. Holding **Space** applies the handbrake and raises the lever on the driver's right side of the center console. See the [released](docs/screenshots/driver_check_released.png) and [applied](docs/screenshots/driver_check_applied.png) views. The seatbelt is a practice control and indicator; it does not yet change crash physics or the lesson result.
 
 | Action | Keyboard and mouse |
 |---|---|
 | Start / stop engine | H |
-| Fasten / unfasten seatbelt | B, or click the upper-left button with the cursor shown |
+| Fasten / unfasten seatbelt | B, or click the upper-left button while paused |
 | Steer | A / D |
 | Accelerate / brake | W / S |
 | Depress clutch | Hold C |
 | Shift up / down | E / Q |
 | Handbrake | Hold Space |
-| Show cursor / resume mouse look | Tab |
 | Look around | Mouse |
 | Pause / resume | Escape |
 | Restart lesson | R |
