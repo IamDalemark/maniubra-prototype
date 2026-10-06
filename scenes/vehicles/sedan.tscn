@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/sedan.gd" id="1_sedan"]
+
+[node name="Sedan" type="VehicleBody3D"]
+mass = 1100.0
+continuous_cd = true
+script = ExtResource("1_sedan")
