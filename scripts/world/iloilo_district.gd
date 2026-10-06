@@ -196,6 +196,16 @@ func _build_riverside() -> void:
 
 
 func _build_neighborhood() -> void:
+	# Put a compact local shopping street in the first forward view from A.
+	# Shopfronts remain beyond the sidewalks and clear of the two travel lanes.
+	for side in [-1.0, 1.0]:
+		for index in 8:
+			var shop := SHOPFRONT.instantiate()
+			shop.palette_index = (index + (0 if side < 0.0 else 2)) % 4
+			shop.position = Vector3(-200.0 + side * 12.0, 0, -207.0 + float(index) * 13.5)
+			shop.rotation.y = PI / 2.0 if side < 0.0 else -PI / 2.0
+			add_child(shop)
+	_sign("ILOILO MARKET", Vector3(-192.2, 5.2, -136.0), -PI / 2.0)
 	for index in 9:
 		var shop := SHOPFRONT.instantiate()
 		shop.palette_index = (index + 2) % 4

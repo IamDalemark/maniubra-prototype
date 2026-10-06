@@ -1,6 +1,6 @@
 # Open World — Iloilo driving plan
 
-Planning date: 7 October 2026. A first playable slice now has a connected drivable district, the optional Molo Plaza badge flow, six moving road vehicles, sidewalk walkers, two conditional crossings and three physical vendor stalls. A first landmark visual pass gives Molo Church a twin-spire front, Calle Real a continuous heritage storefront row, and the riverside a railed promenade. These are stylized interpretations rather than finished models. Traffic behavior, a more distinctive neighborhood at the departure point, and measured travel-time tuning still need work.
+Planning date: 7 October 2026. A first playable slice now has a connected drivable district, the optional Molo Plaza badge flow, six moving road vehicles, sidewalk walkers, two conditional crossings and three physical vendor stalls. A first landmark visual pass gives Molo Church a twin-spire front, Calle Real a continuous heritage storefront row, the riverside a railed promenade, and the departure point a local market street. These are stylized interpretations rather than finished models. Traffic behavior and measured travel-time tuning still need work.
 
 ## Experience
 
