@@ -61,7 +61,7 @@ func _process(delta: float) -> void:
 	_rear_camera.global_transform = global_transform * Transform3D(Basis.IDENTITY, Vector3(0, 1.76, -0.92))
 	for index in _side_cameras.size():
 		var side: float = -1.0 if index == 0 else 1.0
-		_side_cameras[index].global_transform = global_transform * Transform3D(Basis(Vector3.UP, -side * 0.72), Vector3(side * 1.18, 1.38, 0.80))
+		_side_cameras[index].global_transform = global_transform * Transform3D(Basis(Vector3.UP, -side * 0.72), Vector3(side * 1.12, 1.38, 0.64))
 	if not driving_enabled:
 		_update_hands(delta)
 
@@ -231,7 +231,8 @@ func _build_vehicle() -> void:
 	for x in [-0.83, 0.83]:
 		_box(self, Vector3(0.15, 0.15, 2.37), Vector3(x, 1.91, -0.42), Color("252d30"), 0.82)
 	for x in [-0.83, 0.83]:
-		_box(self, Vector3(0.12, 1.12, 0.11), Vector3(x, 1.36, 0.68), Color("343e40"), 0.4)
+		# Keep the front corners narrow so they do not mask the side mirrors.
+		_box(self, Vector3(0.08, 1.12, 0.08), Vector3(x, 1.36, 0.73), Color("343e40"), 0.4)
 		_box(self, Vector3(0.10, 1.1, 0.11), Vector3(x, 1.36, -1.04), Color("343e40"), 0.4)
 	_box(self, Vector3(1.76, 0.18, 0.15), Vector3(0, 1.91, 0.70), Color("222b2d"), 0.84)
 	_box(self, Vector3(1.74, 0.14, 0.13), Vector3(0, 1.90, -1.56), Color("252d30"), 0.84)
@@ -486,10 +487,11 @@ func _build_mirror() -> void:
 		side_camera.current = true
 		_side_cameras.append(side_camera)
 		var side_x: float = float(side)
-		_box(self, Vector3(0.22, 0.045, 0.075), Vector3(side_x * 0.92, 1.34, 0.77), Color("252e31"), 0.72)
+		# Mount the housing just behind the front pillar, close to the side window.
+		_box(self, Vector3(0.17, 0.045, 0.075), Vector3(side_x * 0.86, 1.34, 0.61), Color("252e31"), 0.72)
 		var housing := Node3D.new()
 		housing.name = "PassengerMirror" if side < 0.0 else "DriverMirror"
-		housing.position = Vector3(side_x * 0.99, 1.38, 0.78)
+		housing.position = Vector3(side_x * 0.88, 1.38, 0.62)
 		var eye := Vector3(0.40, 1.45, -0.40)
 		housing.rotation.y = atan2(eye.x - housing.position.x, eye.z - housing.position.z)
 		add_child(housing)
