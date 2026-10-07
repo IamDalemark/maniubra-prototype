@@ -180,7 +180,7 @@ static func _button(action: StringName, button: JoyButton) -> void:
 
 
 func update(delta: float) -> void:
-	var target_steering := Input.get_axis("drive_left", "drive_right")
+	var target_steering := Input.get_axis("drive_right", "drive_left")
 	steering = move_toward(steering, target_steering, delta * 2.2)
 	throttle = move_toward(throttle, Input.get_action_strength("drive_throttle"), delta * 2.6)
 	brake = move_toward(brake, Input.get_action_strength("drive_brake"), delta * 3.5)
