@@ -61,7 +61,7 @@ func _process(delta: float) -> void:
 	_rear_camera.global_transform = global_transform * Transform3D(Basis.IDENTITY, Vector3(0, 1.76, -0.92))
 	for index in _side_cameras.size():
 		var side: float = -1.0 if index == 0 else 1.0
-		_side_cameras[index].global_transform = global_transform * Transform3D(Basis(Vector3.UP, -side * 0.72), Vector3(side * 1.0, 1.21, 0.69))
+		_side_cameras[index].global_transform = global_transform * Transform3D(Basis(Vector3.UP, -side * 0.72), Vector3(side * 1.18, 1.38, 0.80))
 	if not driving_enabled:
 		_update_hands(delta)
 
@@ -235,6 +235,19 @@ func _build_vehicle() -> void:
 		_box(self, Vector3(0.10, 1.1, 0.11), Vector3(x, 1.36, -1.04), Color("343e40"), 0.4)
 	_box(self, Vector3(1.76, 0.18, 0.15), Vector3(0, 1.91, 0.70), Color("222b2d"), 0.84)
 	_box(self, Vector3(1.74, 0.14, 0.13), Vector3(0, 1.90, -1.56), Color("252d30"), 0.84)
+	# Close the front and rear door shells below the side windows. Both sides
+	# share the same beltline, seams and handles, including the passenger side.
+	for side in [-1.0, 1.0]:
+		_box(self, Vector3(0.075, 0.48, 1.64), Vector3(side * 0.88, 1.04, -0.18), Color("467e80"), 0.32)
+		_box(self, Vector3(0.075, 0.48, 0.51), Vector3(side * 0.88, 1.04, -1.305), Color("467e80"), 0.32)
+		_box(self, Vector3(0.085, 0.035, 2.30), Vector3(side * 0.89, 1.29, -0.43), Color("25373b"), 0.6)
+		for z in [-1.56, -1.04, 0.65]:
+			_box(self, Vector3(0.09, 0.44, 0.016), Vector3(side * 0.91, 1.04, z), Color("28484c"), 0.7)
+		for z in [-1.27, -0.53]:
+			_box(self, Vector3(0.035, 0.042, 0.21), Vector3(side * 0.934, 1.17, z), Color("c4d0c9"), 0.35)
+		for window in [{"z": -0.18, "length": 1.50}, {"z": -1.30, "length": 0.43}]:
+			var pane := _box(self, Vector3(0.012, 0.56, window.length), Vector3(side * 0.84, 1.60, window.z), Color(0.47, 0.69, 0.76, 0.13), 0.08)
+			(pane.material_override as StandardMaterial3D).transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 
 
 func _build_cockpit() -> void:
@@ -261,8 +274,11 @@ func _build_cockpit() -> void:
 		for y in [1.12, 1.16, 1.20]:
 			_box(self, Vector3(0.16, 0.012, 0.05), Vector3(x, y, 0.52), Color("6b797e"), 0.5)
 	_box(self, Vector3(1.64, 0.025, 0.06), Vector3(0, 1.17, 0.77), Color("8e9694"), 0.34)
-	_box(self, Vector3(0.14, 0.35, 1.72), Vector3(0.80, 0.94, -0.12), Color("30383a"), 0.83)
-	_box(self, Vector3(0.18, 0.08, 1.74), Vector3(0.78, 1.20, -0.12), Color("686b66"), 0.66)
+	for side in [-1.0, 1.0]:
+		_box(self, Vector3(0.14, 0.35, 1.72), Vector3(side * 0.80, 0.94, -0.12), Color("30383a"), 0.83)
+		_box(self, Vector3(0.18, 0.08, 1.74), Vector3(side * 0.78, 1.20, -0.12), Color("686b66"), 0.66)
+		_box(self, Vector3(0.022, 0.10, 0.30), Vector3(side * 0.68, 1.08, -0.34), Color("1d282b"), 0.75)
+		_box(self, Vector3(0.03, 0.025, 0.16), Vector3(side * 0.66, 1.12, -0.34), Color("b8c3bc"), 0.35)
 	_box(self, Vector3(0.24, 0.18, 0.75), Vector3(0.08, 0.88, -0.03), Color("30393c"), 0.84)
 	for x in [-0.36, 0.43]:
 		_box(self, Vector3(0.44, 0.12, 0.52), Vector3(x, 0.69, -0.68), Color("74665a"), 0.88)
@@ -470,18 +486,24 @@ func _build_mirror() -> void:
 		side_camera.current = true
 		_side_cameras.append(side_camera)
 		var side_x: float = float(side)
-		_box(self, Vector3(0.36, 0.24, 0.04), Vector3(side_x * 1.02, 1.21, 0.71), Color("171e20"), 0.3)
+		_box(self, Vector3(0.22, 0.045, 0.075), Vector3(side_x * 0.92, 1.34, 0.77), Color("252e31"), 0.72)
+		var housing := Node3D.new()
+		housing.name = "PassengerMirror" if side < 0.0 else "DriverMirror"
+		housing.position = Vector3(side_x * 0.99, 1.38, 0.78)
+		var eye := Vector3(0.40, 1.45, -0.40)
+		housing.rotation.y = atan2(eye.x - housing.position.x, eye.z - housing.position.z)
+		add_child(housing)
+		_box(housing, Vector3(0.36, 0.22, 0.055), Vector3.ZERO, Color("171e20"), 0.3)
 		var glass := MeshInstance3D.new()
 		var side_quad := QuadMesh.new()
 		side_quad.size = Vector2(0.30, 0.18)
 		glass.mesh = side_quad
-		glass.position = Vector3(side_x * 1.02, 1.21, 0.68)
-		glass.rotation.y = PI
+		glass.position = Vector3(0.0, 0.0, 0.032)
 		var glass_material := StandardMaterial3D.new()
 		glass_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		glass_material.albedo_texture = side_viewport.get_texture()
 		glass.material_override = glass_material
-		add_child(glass)
+		housing.add_child(glass)
 
 
 func _build_audio() -> void:

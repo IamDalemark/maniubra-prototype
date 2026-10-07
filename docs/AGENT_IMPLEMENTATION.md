@@ -12,6 +12,8 @@ The selected gear label is now a child of the shift lever's knob, displaying N, 
 
 The steering wheel now turns farther visually, and the procedural hands perform a hand-over-hand reach and regrip during stronger turns in either direction. Small corrections retain a two-hand grip. Native Metal captures checked neutral, crossover, and full-lock poses; gear, handbrake, and seatbelt reaches still have priority. The animation remains a stylized approximation and needs a manual exported-app feel check.
 
+The sedan passenger side now has matching front/rear door shells, handles, transparent window panes, and interior trim. Side mirrors have angled housings facing the left-seat driver and raised reflection cameras. Native Metal captures checked the exterior, right-facing cockpit, and forward mirror visibility; perform a manually driven mirror check in the exported app before treating mirror usefulness as fully accepted.
+
 The Xbox preset now maps every implemented driving control, first-person look, pause, and menu select/back. Settings shows connected controller status and a scrollable keyboard remapping screen. Saved physical-key bindings load before sessions, preserve controller action events, and update prompts and HUD hints. A focused automated check covers mapping, remap, duplicate rejection, persistence, and reset. No controller was detected on this Mac during development, so connection, trigger ranges, and comfort need a physical Xbox playthrough before claiming hardware compatibility.
 
 The sedan now sits lower on its wheels. A flat-road regression check keeps ordinary full-lock cornering planted and still permits rollover at high speed; inspect handling in a manually driven exported-app run before treating the tune as final.
