@@ -243,14 +243,6 @@ func _build_cockpit() -> void:
 	_box(self, Vector3(0.87, 0.055, 0.15), Vector3(0.40, 1.32, 0.74), Color("222a2c"), 0.76)
 	_speed_needle = _gauge(Vector3(0.23, 1.21, 0.59), Color("e4e9e4"))
 	_rpm_needle = _gauge(Vector3(0.58, 1.21, 0.59), Color("e4e9e4"))
-	_gear_display = Label3D.new()
-	_gear_display.text = "N"
-	_gear_display.position = Vector3(0.40, 1.17, 0.48)
-	_gear_display.rotation.y = PI
-	_gear_display.font_size = 40
-	_gear_display.pixel_size = 0.00165
-	_gear_display.modulate = Color("d8f6ed")
-	add_child(_gear_display)
 	_box(self, Vector3(0.58, 0.35, 0.06), Vector3(-0.40, 1.15, 0.55), Color("10191e"), 0.28)
 	_box(self, Vector3(0.51, 0.28, 0.012), Vector3(-0.40, 1.15, 0.51), Color("183a55"), 0.19)
 	for x in [-0.57, -0.40, -0.23]:
@@ -289,6 +281,15 @@ func _build_cockpit() -> void:
 	_box(_steering_visual, Vector3(0.13, 0.13, 0.10), Vector3.ZERO, Color("a2b7ae"), 0.4)
 	_lever = _box(self, Vector3(0.055, 0.34, 0.055), Vector3(-0.09, 1.06, -0.02), Color("b6c2bd"), 0.35)
 	_box(_lever, Vector3(0.13, 0.11, 0.13), Vector3(0, 0.18, 0), Color("182326"), 0.85)
+	_gear_display = Label3D.new()
+	_gear_display.name = "GearOnKnob"
+	_gear_display.text = "N"
+	_gear_display.position = Vector3(0, 0.18, -0.073)
+	_gear_display.rotation.y = PI
+	_gear_display.font_size = 64
+	_gear_display.pixel_size = 0.00125
+	_gear_display.modulate = Color("e8f5ed")
+	_lever.add_child(_gear_display)
 	# A short lever sits beside the wheel, low enough to keep the gauges clear.
 	_box(self, Vector3(0.12, 0.05, 0.25), Vector3(0.08, 1.07, 0.14), Color("222b2d"), 0.8)
 	_handbrake_lever = Node3D.new()

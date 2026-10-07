@@ -8,6 +8,8 @@ Implemented now: four-course menu, nine individual maneuver entries, playable Pr
 
 Open World now has shared-style corrective toasts for shift/ignition/stall errors, pedestrian and traffic-vehicle contacts, roadside-stall contacts, and one authored market stop line. Incidents are included in its review. Pedestrians have separate moving arms and legs plus a simple fall animation on sedan impact. The sedan's gauges sit lower and are smaller to expose more of the near road in first person. `tests/open_world_flow.gd` checks the authored stop condition and event deduplication; `tests/open_world_collision.gd` verifies actual Jolt contact with a pedestrian and another vehicle. Manually drive and tune the sign/line and collision feedback in the exported app before expanding rule coverage.
 
+The selected gear label is now a child of the shift lever's knob, displaying N, R, or the forward gear number on the control itself as the lever moves. The existing HUD gear readout remains for accessibility. This was checked in native Metal cockpit captures; verify legibility at the intended display size during the exported-app playthrough.
+
 The sedan now sits lower on its wheels. A flat-road regression check keeps ordinary full-lock cornering planted and still permits rollover at high speed; inspect handling in a manually driven exported-app run before treating the tune as final.
 
 Audio playback was repaired by setting explicit WAV loop endpoints. The engine sound now starts with ignition, stops on shutdown or stall, and loops while running; the volume setting controls both engine and road sounds. A graphical macOS probe measured a live Master-bus signal; confirm audibility on the intended speaker/headphone output during the exported-app playthrough.
