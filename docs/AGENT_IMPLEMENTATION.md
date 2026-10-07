@@ -10,6 +10,8 @@ Open World now has shared-style corrective toasts for shift/ignition/stall error
 
 The selected gear label is now a child of the shift lever's knob, displaying N, R, or the forward gear number on the control itself as the lever moves. The existing HUD gear readout remains for accessibility. This was checked in native Metal cockpit captures; verify legibility at the intended display size during the exported-app playthrough.
 
+The steering wheel now turns farther visually, and the procedural hands perform a hand-over-hand reach and regrip during stronger turns in either direction. Small corrections retain a two-hand grip. Native Metal captures checked neutral, crossover, and full-lock poses; gear, handbrake, and seatbelt reaches still have priority. The animation remains a stylized approximation and needs a manual exported-app feel check.
+
 The Xbox preset now maps every implemented driving control, first-person look, pause, and menu select/back. Settings shows connected controller status and a scrollable keyboard remapping screen. Saved physical-key bindings load before sessions, preserve controller action events, and update prompts and HUD hints. A focused automated check covers mapping, remap, duplicate rejection, persistence, and reset. No controller was detected on this Mac during development, so connection, trigger ranges, and comfort need a physical Xbox playthrough before claiming hardware compatibility.
 
 The sedan now sits lower on its wheels. A flat-road regression check keeps ordinary full-lock cornering planted and still permits rollover at high speed; inspect handling in a manually driven exported-app run before treating the tune as final.

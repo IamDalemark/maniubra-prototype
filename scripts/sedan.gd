@@ -87,7 +87,8 @@ func _physics_process(delta: float) -> void:
 	engine_force = gearbox.drive_force(controls.throttle, controls.clutch)
 	brake = controls.brake * 34.0 + (40.0 if controls.handbrake else 0.0)
 	gearbox.update_rpm(controls.throttle, controls.clutch, speed_mps() * 3.6, delta)
-	_steering_visual.rotation.z = -controls.steering * 0.8
+	# The wheel turns far enough for a visible hand-over-hand transfer at full lock.
+	_steering_visual.rotation.z = -controls.steering * 2.05
 	_lever.rotation.x = float(gearbox.gear) * 0.06
 	_handbrake_lever.rotation.x = move_toward(_handbrake_lever.rotation.x, 0.38 if controls.handbrake else 0.0, delta * 4.0)
 	_update_hands(delta)
@@ -358,6 +359,25 @@ func _update_hands(delta: float) -> void:
 		_seatbelt_hand_timer = maxf(_seatbelt_hand_timer - delta, 0.0)
 	var left_grip := _steering_visual.position + _steering_visual.basis * Vector3(0.18, 0.15, -0.065)
 	var right_grip := _steering_visual.position + _steering_visual.basis * Vector3(-0.18, 0.15, -0.065)
+	var wheel_angle := _steering_visual.rotation.z
+	var crossover := smoothstep(0.90, 1.70, absf(wheel_angle))
+	var crossing_left := wheel_angle < 0.0
+	if crossover > 0.0:
+		# One hand carries the rim toward twelve o'clock. The other releases,
+		# reaches over it, and takes a fresh grip on the opposite upper rim.
+		var starting_phi := (0.876 if crossing_left else -0.876) - wheel_angle
+		var target_phi := signf(wheel_angle) * (0.55 - maxf(absf(wheel_angle) - 1.70, 0.0))
+		var grip_phi := lerp_angle(starting_phi, target_phi, crossover)
+		var lift := sin(crossover * PI)
+		var crossing_grip := _steering_visual.position + Vector3(
+			sin(grip_phi) * 0.235,
+			cos(grip_phi) * 0.235 + lift * 0.16,
+			-0.065 - lift * 0.045
+		)
+		if crossing_left:
+			left_grip = crossing_grip
+		else:
+			right_grip = crossing_grip
 	var shift_reach: float = sin((1.0 - _gear_hand_timer / 0.65) * PI) if _gear_hand_timer > 0.0 else 0.0
 	var brake_reach: float = sin((1.0 - _handbrake_hand_timer / 0.72) * PI) if _gear_hand_timer <= 0.0 and _handbrake_hand_timer > 0.0 else 0.0
 	var belt_reach: float = sin((1.0 - _seatbelt_hand_timer / 0.58) * PI) if _gear_hand_timer <= 0.0 and _handbrake_hand_timer <= 0.0 and _seatbelt_hand_timer > 0.0 else 0.0
@@ -370,8 +390,10 @@ func _update_hands(delta: float) -> void:
 		right_target = right_grip.lerp(Vector3(0.57, 1.33, -0.08), belt_reach)
 	_left_hand.position = left_grip
 	_right_hand.position = right_target
-	_left_hand.rotation.z = _steering_visual.rotation.z
-	_right_hand.rotation.z = lerpf(_steering_visual.rotation.z, 0.0, maxf(shift_reach, maxf(brake_reach, belt_reach)))
+	var left_rotation := lerpf(wheel_angle, -0.20, crossover) if crossing_left else wheel_angle
+	var right_rotation := lerpf(wheel_angle, 0.20, crossover) if not crossing_left else wheel_angle
+	_left_hand.rotation.z = left_rotation
+	_right_hand.rotation.z = lerpf(right_rotation, 0.0, maxf(shift_reach, maxf(brake_reach, belt_reach)))
 	_pose_arm(_left_arm, Vector3(0.78, 0.78, -0.18), left_grip)
 	_pose_arm(_right_arm, Vector3(0.04, 0.78, -0.18), right_target)
 
