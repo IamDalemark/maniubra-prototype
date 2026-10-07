@@ -3,6 +3,7 @@ extends Control
 
 const Catalog = preload("res://scripts/course_catalog.gd")
 const AttemptStore = preload("res://scripts/attempt_store.gd")
+const DrivingInput = preload("res://scripts/driving_input.gd")
 const COURSE_ART = {
 	"primary_controls": "res://assets/ui/course_art/primary_controls.png",
 	"secondary_controls": "res://assets/ui/course_art/secondary_controls.png",
@@ -41,14 +42,39 @@ var _session = null
 var _last_result: Dictionary = {}
 var _camera_fov := 75.0
 var _audio_level := 0.8
+var _pending_binding_action: StringName = &""
+var _binding_buttons: Dictionary = {}
+var _binding_notice: Label
+var _controller_status: Label
 
 
 func _ready() -> void:
+	DrivingInput.install_actions()
+	DrivingInput.load_keyboard_bindings()
+	Input.joy_connection_changed.connect(_on_joy_connection_changed)
 	_build_shell()
 	_show_home()
 
 
-func _unhandled_key_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
+	if _page != "settings" or _pending_binding_action == &"" or not event is InputEventKey or not event.pressed or event.echo:
+		return
+	get_viewport().set_input_as_handled()
+	if event.keycode == KEY_ESCAPE or event.physical_keycode == KEY_ESCAPE:
+		_pending_binding_action = &""
+		_refresh_binding_buttons()
+		_binding_notice.text = "Binding change cancelled."
+		return
+	var key: Key = event.physical_keycode if event.physical_keycode != KEY_NONE else event.keycode
+	if not DrivingInput.set_keyboard_binding(_pending_binding_action, key):
+		_binding_notice.text = "That key is already used, or is reserved. Choose another key."
+		return
+	_pending_binding_action = &""
+	_refresh_binding_buttons()
+	_binding_notice.text = "Keyboard bindings saved." if DrivingInput.save_keyboard_bindings() else "Binding changed for this run, but could not be saved."
+
+
+func _unhandled_input(event: InputEvent) -> void:
 	if _page != "session" and event.is_action_pressed("ui_cancel"):
 		_go_back()
 		get_viewport().set_input_as_handled()
@@ -79,6 +105,8 @@ func _build_shell() -> void:
 
 func _clear_page(page: String, title: String, description: String) -> void:
 	_page = page
+	_pending_binding_action = &""
+	_binding_buttons.clear()
 	for child in _content.get_children():
 		_content.remove_child(child)
 		child.queue_free()
@@ -115,7 +143,7 @@ func _show_home() -> void:
 
 
 func _show_settings() -> void:
-	_clear_page("settings", "Settings", "Adjust the first-person view and audio for driving practice.")
+	_clear_page("settings", "Settings", "Adjust the cockpit, audio, and keyboard controls.")
 	var fov_label := _add_text("Camera field of view: %.0f°" % _camera_fov, 18)
 	var fov_slider := HSlider.new()
 	fov_slider.min_value = 60.0
@@ -132,8 +160,67 @@ func _show_settings() -> void:
 	audio_slider.value = _audio_level
 	audio_slider.value_changed.connect(func(value: float): _audio_level = value; audio_label.text = "Audio volume: %d%%" % roundi(value * 100))
 	_content.add_child(audio_slider)
+	_add_text("Xbox controller", 24, Color("f5c548"))
+	_controller_status = _add_text("", 17, Color("d4e7d6"))
+	_refresh_controller_status()
+	_add_text("Left stick steer · right trigger accelerate · left trigger brake · LB clutch · RB shift up · D-pad down shift down · A handbrake · Y engine · X seatbelt · D-pad up restart · Menu pause · right stick look. A selects and B goes back in menus.", 16, Color("d4e7d6"))
+	_add_text("Keyboard bindings", 24, Color("f5c548"))
+	_add_text("Select an action, then press a key. Escape cancels. Controller axes and buttons use the Xbox layout above.", 16, Color("d4e7d6"))
+	_binding_notice = _add_text("", 16, Color("eecb7d"))
+	for binding in DrivingInput.BINDINGS:
+		var action := StringName(binding["action"])
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		_content.add_child(row)
+		var caption := Label.new()
+		caption.text = binding["label"]
+		caption.custom_minimum_size.x = 190
+		caption.add_theme_font_size_override("font_size", 17)
+		row.add_child(caption)
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(165, 39)
+		button.pressed.connect(_begin_key_capture.bind(action))
+		row.add_child(button)
+		_binding_buttons[action] = button
+	_refresh_binding_buttons()
+	_add_button("Restore default keys", _reset_keyboard_bindings)
 	_add_button("Back", _show_home)
 	fov_slider.grab_focus()
+
+
+func _begin_key_capture(action: StringName) -> void:
+	_pending_binding_action = action
+	_binding_notice.text = "Press a key for %s." % _binding_label(action)
+	_refresh_binding_buttons()
+
+
+func _binding_label(action: StringName) -> String:
+	for binding in DrivingInput.BINDINGS:
+		if binding["action"] == String(action):
+			return binding["label"]
+	return String(action)
+
+
+func _refresh_binding_buttons() -> void:
+	for action in _binding_buttons:
+		var button: Button = _binding_buttons[action]
+		button.text = "Press a key…" if action == _pending_binding_action else DrivingInput.keyboard_name(action)
+
+
+func _reset_keyboard_bindings() -> void:
+	DrivingInput.reset_keyboard_bindings()
+	_refresh_binding_buttons()
+	_binding_notice.text = "Default keys restored." if DrivingInput.save_keyboard_bindings() else "Defaults restored for this run, but could not be saved."
+
+
+func _on_joy_connection_changed(_device: int, _connected: bool) -> void:
+	if _page == "settings":
+		_refresh_controller_status()
+
+
+func _refresh_controller_status() -> void:
+	var devices := Input.get_connected_joypads()
+	_controller_status.text = "No controller detected on this Mac." if devices.is_empty() else "Connected: %s" % Input.get_joy_name(devices[0])
 
 
 func _show_courses() -> void:
@@ -298,7 +385,7 @@ func _show_briefing(lesson_id: String) -> void:
 		_add_text("This lesson is not available yet.", 18, Color("e5c98c"))
 		_add_button("Start lesson — coming soon", func(): pass).disabled = true
 	else:
-		_add_text("Controls: H engine · B seatbelt · W throttle · S brake · A/D steer · hold C clutch · E/Q gears · hold Space handbrake · mouse look · Esc pause.\nThe seatbelt button can also be clicked while paused.", 17, Color("d4e7d6"))
+		_add_text("Keyboard: " + DrivingInput.keyboard_hint() + " · mouse look.\nXbox: " + DrivingInput.controller_hint() + ". The seatbelt button can also be clicked while paused.", 17, Color("d4e7d6"))
 		if _course_id == "open_world":
 			_add_text("Molo Plaza appears as an optional venue name while you drive. Find it using the streets and signs; stop in its painted bay for a badge. You can explore for as long as you like and end the drive from pause.", 17, Color("f5d47d"))
 		var previous := AttemptStore.load_attempts()

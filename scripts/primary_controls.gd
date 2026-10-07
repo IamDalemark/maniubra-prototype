@@ -10,22 +10,24 @@ const PALM_SCENE = preload("res://scenes/props/palm.tscn")
 const JEEPNEY_SCENE = preload("res://scenes/props/jeepney.tscn")
 const TRICYCLE_SCENE = preload("res://scenes/props/tricycle.tscn")
 const TRAFFIC_CONE_SCENE = preload("res://scenes/props/traffic_cone.tscn")
+const DrivingInput = preload("res://scripts/driving_input.gd")
 const SPAWN_POSITION := Vector3(-2.7, 0.02, -85.0)
 const STEP_TEXT = [
-	"Press H to start the engine while the gearbox is in neutral.",
-	"Hold C to depress the clutch, then press E to select first gear.",
-	"Release C, hold W, and travel forward past 8 km/h.",
-	"Depress C and press E to shift into second gear.",
-	"Steer with A/D while moving to change your position in the lot.",
-	"Hold C and brake with S until the sedan comes to a full stop.",
-	"Hold Space to apply the handbrake while stopped.",
-	"Release Space, hold C, press Q three times for reverse, then back up 3 m.",
+	"Press {drive_ignition} to start the engine while the gearbox is in neutral.",
+	"Hold {drive_clutch} to depress the clutch, then press {drive_gear_up} to select first gear.",
+	"Release {drive_clutch}, hold {drive_throttle}, and travel forward past 8 km/h.",
+	"Depress {drive_clutch} and press {drive_gear_up} to shift into second gear.",
+	"Steer with {drive_left}/{drive_right} while moving to change your position in the lot.",
+	"Hold {drive_clutch} and brake with {drive_brake} until the sedan comes to a full stop.",
+	"Hold {drive_handbrake} to apply the handbrake while stopped.",
+	"Release {drive_handbrake}, hold {drive_clutch}, press {drive_gear_down} three times for reverse, then back up 3 m.",
 ]
 
 var sedan
 var _hud: Label
 var _prompt: Label
 var _feedback: Label
+var _controls_hint: Label
 var _seatbelt_status: Label
 var _seatbelt_button: Button
 var _handbrake_status: Label
@@ -85,7 +87,7 @@ func _physics_process(delta: float) -> void:
 	match _step:
 		0:
 			if sedan.gearbox.engine_running:
-				_advance("Engine started with H.")
+				_advance("Engine started.")
 		1:
 			if sedan.gearbox.gear == 1:
 				_advance("First gear selected with the clutch depressed.")
@@ -124,7 +126,7 @@ func _process(delta: float) -> void:
 func _input(event: InputEvent) -> void:
 	if not _started:
 		return
-	if event.is_action_pressed("ui_cancel"):
+	if event.is_action_pressed("drive_pause"):
 		_set_paused(not _paused)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("drive_reset") and not _paused:
@@ -152,7 +154,7 @@ func _on_engine_state_changed(running: bool, stalled: bool) -> void:
 	if not _started or _paused:
 		return
 	var event_type := "engine_stalled" if stalled else ("engine_started" if running else "engine_stopped")
-	var detail := "Engine stalled. Hold C and press H to restart." if stalled else ("Engine started." if running else "Engine switched off with H.")
+	var detail := "Engine stalled. Hold %s and press %s to restart." % [DrivingInput.display_name("drive_clutch", sedan.controls.last_device), DrivingInput.display_name("drive_ignition", sedan.controls.last_device)] if stalled else ("Engine started." if running else "Engine switched off.")
 	_events.append({"type": event_type, "elapsed_seconds": snappedf(_elapsed, 0.01), "detail": detail})
 	_last_notice = detail
 	if stalled:
@@ -164,7 +166,7 @@ func _on_engine_state_changed(running: bool, stalled: bool) -> void:
 func _on_ignition_rejected() -> void:
 	if not _started or _paused:
 		return
-	var detail := "Hold C or select neutral before starting the engine."
+	var detail := "Hold %s or select neutral before starting the engine." % DrivingInput.display_name("drive_clutch", sedan.controls.last_device)
 	_events.append({"type": "ignition_rejected", "elapsed_seconds": snappedf(_elapsed, 0.01), "detail": detail})
 	_last_notice = detail
 	_show_error_toast("START BLOCKED", detail)
@@ -249,13 +251,23 @@ func _update_ui() -> void:
 	var gear_name := "R" if sedan.gearbox.gear == -1 else ("N" if sedan.gearbox.gear == 0 else str(sedan.gearbox.gear))
 	var engine_status := "RUNNING" if sedan.gearbox.engine_running else ("STALLED" if sedan.gearbox.engine_stalled else "OFF")
 	_hud.text = "SPEED  %02d km/h     RPM  %04d     GEAR  %s     ENGINE  %s\nCLUTCH  %d%%     HANDBRAKE  %s     SEATBELT  %s" % [roundi(sedan.speed_mps() * 3.6), roundi(sedan.gearbox.engine_rpm), gear_name, engine_status, roundi(sedan.controls.clutch * 100), "ON" if sedan.controls.handbrake else "OFF", "ON" if sedan.seatbelt_fastened else "OFF"]
-	_prompt.text = "PRIMARY CONTROLS   •   %d / %d\n%s" % [mini(_step + 1, STEP_TEXT.size()), STEP_TEXT.size(), STEP_TEXT[mini(_step, STEP_TEXT.size() - 1)]]
+	_prompt.text = "PRIMARY CONTROLS   •   %d / %d\n%s" % [mini(_step + 1, STEP_TEXT.size()), STEP_TEXT.size(), _step_prompt(mini(_step, STEP_TEXT.size() - 1))]
 	_feedback.text = _last_notice
+	_controls_hint.text = DrivingInput.controller_hint() if sedan.controls.last_device == "gamepad" else DrivingInput.keyboard_hint()
 	_seatbelt_status.text = "SEATBELT  •  FASTENED" if sedan.seatbelt_fastened else "SEATBELT  •  UNFASTENED"
 	_seatbelt_status.add_theme_color_override("font_color", Color("a4dfbb") if sedan.seatbelt_fastened else Color("f5c568"))
-	_seatbelt_button.text = "Unfasten seatbelt  [B]" if sedan.seatbelt_fastened else "Fasten seatbelt  [B]"
+	var belt_key := DrivingInput.display_name("drive_seatbelt", sedan.controls.last_device)
+	_seatbelt_button.text = "Unfasten seatbelt  [%s]" % belt_key if sedan.seatbelt_fastened else "Fasten seatbelt  [%s]" % belt_key
 	_handbrake_status.text = "HANDBRAKE  •  APPLIED" if sedan.controls.handbrake else "HANDBRAKE  •  RELEASED"
 	_handbrake_status.add_theme_color_override("font_color", Color("f5c568") if sedan.controls.handbrake else Color("a4dfbb"))
+
+
+func _step_prompt(index: int) -> String:
+	var prompt: String = STEP_TEXT[index]
+	for binding in DrivingInput.BINDINGS:
+		var action: String = binding["action"]
+		prompt = prompt.replace("{" + action + "}", DrivingInput.display_name(StringName(action), sedan.controls.last_device))
+	return prompt
 
 
 func _build_yard() -> void:
@@ -485,9 +497,8 @@ func _build_ui() -> void:
 	layout.add_child(spacer)
 	_hud = _label(22, Color("f7f5e9"))
 	layout.add_child(_hud)
-	var hint := _label(15, Color("f2e5c7"))
-	hint.text = "H engine  B seatbelt  W throttle  S brake  A/D steer  C clutch  E/Q gears  Space handbrake  R restart  Esc pause"
-	layout.add_child(hint)
+	_controls_hint = _label(15, Color("f2e5c7"))
+	layout.add_child(_controls_hint)
 	_build_error_toast(layer)
 	_pause_center = CenterContainer.new()
 	_pause_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

@@ -8,6 +8,7 @@ const DISTRICT = preload("res://scenes/world/iloilo_district.tscn")
 const SEDAN = preload("res://scenes/vehicles/sedan.tscn")
 const TRAFFIC = preload("res://scripts/world/traffic_vehicle.gd")
 const PEDESTRIAN = preload("res://scripts/world/pedestrian.gd")
+const DrivingInput = preload("res://scripts/driving_input.gd")
 const VENUE_NAME := "Molo Plaza"
 
 var district
@@ -24,6 +25,7 @@ var traffic: Array = []
 var pedestrians: Array = []
 var _hud: Label
 var _venue: Label
+var _controls_hint: Label
 var _toast: PanelContainer
 var _toast_label: Label
 var _toast_style: StyleBoxFlat
@@ -97,7 +99,7 @@ func _process(delta: float) -> void:
 func _input(event: InputEvent) -> void:
 	if not _started:
 		return
-	if event.is_action_pressed("ui_cancel"):
+	if event.is_action_pressed("drive_pause"):
 		_set_paused(not _paused)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("drive_reset") and not _paused:
@@ -118,7 +120,7 @@ func _on_engine_state_changed(running: bool, stalled: bool) -> void:
 	var detail := "Engine stalled." if stalled else ("Engine started." if running else "Engine switched off.")
 	_events.append({"type": "engine_stalled" if stalled else ("engine_started" if running else "engine_stopped"), "elapsed_seconds": snappedf(_elapsed, 0.01), "detail": detail})
 	if stalled:
-		_show_toast("ENGINE STALLED", "Hold C and press H to restart.", true)
+		_show_toast("ENGINE STALLED", "Hold %s and press %s to restart." % [DrivingInput.display_name("drive_clutch", sedan.controls.last_device), DrivingInput.display_name("drive_ignition", sedan.controls.last_device)], true)
 
 
 func _on_shift_rejected() -> void:
@@ -130,7 +132,7 @@ func _on_shift_rejected() -> void:
 func _on_ignition_rejected() -> void:
 	if not _started or _paused:
 		return
-	_record_error("ignition_rejected", "START BLOCKED", "Hold C or select neutral before starting.")
+	_record_error("ignition_rejected", "START BLOCKED", "Hold %s or select neutral before starting." % DrivingInput.display_name("drive_clutch", sedan.controls.last_device))
 
 
 func _on_sedan_body_entered(body: Node) -> void:
@@ -340,6 +342,7 @@ func _update_hud() -> void:
 	var gear_name := "R" if sedan.gearbox.gear == -1 else ("N" if sedan.gearbox.gear == 0 else str(sedan.gearbox.gear))
 	var engine_status := "RUNNING" if sedan.gearbox.engine_running else ("STALLED" if sedan.gearbox.engine_stalled else "OFF")
 	_hud.text = "SPEED  %02d km/h     RPM  %04d     GEAR  %s     ENGINE  %s\nCLUTCH  %d%%     HANDBRAKE  %s     SEATBELT  %s" % [roundi(sedan.speed_mps() * 3.6), roundi(sedan.gearbox.engine_rpm), gear_name, engine_status, roundi(sedan.controls.clutch * 100), "ON" if sedan.controls.handbrake else "OFF", "ON" if sedan.seatbelt_fastened else "OFF"]
+	_controls_hint.text = DrivingInput.controller_hint() if sedan.controls.last_device == "gamepad" else DrivingInput.keyboard_hint()
 
 
 func _build_ui() -> void:
@@ -360,9 +363,8 @@ func _build_ui() -> void:
 	layout.add_child(spacer)
 	_hud = _label(21, Color("f7f5e9"))
 	layout.add_child(_hud)
-	var controls_hint := _label(14, Color("f2e5c7"))
-	controls_hint.text = "H engine  B seatbelt  W throttle  S brake  A/D steer  C clutch  E/Q gears  Space handbrake  R restart  Esc pause"
-	layout.add_child(controls_hint)
+	_controls_hint = _label(14, Color("f2e5c7"))
+	layout.add_child(_controls_hint)
 	_toast = PanelContainer.new()
 	_toast.anchor_left = 1.0
 	_toast.anchor_right = 1.0
