@@ -21,6 +21,10 @@ scenes/props/*.tscn                    Streetscape props and movable traffic con
 scripts/props/city_prop.gd             Original streetscape geometry and materials
 scripts/props/traffic_cone.gd          Reusable physical training cone
 scripts/driving_input.gd               Keyboard and preliminary gamepad actions
+scripts/xbox_usb_bridge.gd             Direct Xbox One USB packet receiver and action relay
+tools/xbox_usb_bridge.c                libusb reader for USB ID 045e:02d1
+tools/build_xbox_usb_bridge.sh         Build reader for local Mac
+tools/export_macos.sh                  Bundle reader in exported app
 tests/input_bindings.gd                 Xbox preset and keyboard remap persistence
 scripts/manual_transmission.gd         Clutch-gated manual gearbox
 scripts/attempt_store.gd               Versioned local attempt history
@@ -76,7 +80,7 @@ Input and transmission are small scripts owned by the vehicle, with focused chec
 
 **Session lifecycle:** App loads the selected scene, calls `start_attempt(context)`, and connects `attempt_finished(result)` and `exit_requested`. Context starts with `course_id`, `lesson_id`, `vehicle_id`, and `input_profile_id`. Add scenario and assessment versions when saving begins. Restart resets all owned nodes or reconstructs the session; it never reuses the previous event list. App frees the session and releases captured mouse input before showing menus.
 
-**Driving input:** expose steering in `[-1, 1]`, throttle/brake/clutch in `[0, 1]`, handbrake state, seatbelt toggle requests, and gear-selection requests. Define clutch `1` as pedal fully depressed/disengaged and `0` as released/engaged. Digital controls may ramp their values; physical analog axes must be calibrated. The same semantic actions now include a standard Xbox button/axis preset. Settings replaces only keyboard events, preserving gamepad events; saved physical-key bindings load before any lesson launches. A connected `045e:02d1` Xbox One controller appeared on the USB bus but was not exposed as a gamepad by macOS GameController or Godot 4.7.2, so physical calibration remains open.
+**Driving input:** expose steering in `[-1, 1]`, throttle/brake/clutch in `[0, 1]`, handbrake state, seatbelt toggle requests, and gear-selection requests. Define clutch `1` as pedal fully depressed/disengaged and `0` as released/engaged. Digital controls may ramp their values; physical analog axes must be calibrated. The same semantic actions include a standard Xbox button/axis preset. Settings replaces only keyboard events, preserving gamepad events; saved physical-key bindings load before any lesson launches. macOS GameController and Godot 4.7.2 do not expose the connected `045e:02d1` Xbox One controller as a gamepad. A statically linked libusb helper claims this model's USB interface, initializes it, and relays 18-byte input reports over a loopback UDP port chosen by Godot. `xbox_usb_bridge.gd` translates them to `InputEventAction` events and releases held actions after a heartbeat timeout. App owns the helper process. Live packet reception passed; physical driving and analog calibration remain open.
 
 **Vehicle state:** expose speed in meters/second internally, selected gear (`-1` reverse, `0` neutral, positive forward gears), clutch engagement, transform, and relevant control states. Convert to km/h for display with `m/s × 3.6`. Gear count and ratios are tuning choices, not new product scope.
 

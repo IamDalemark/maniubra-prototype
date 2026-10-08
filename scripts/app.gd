@@ -4,6 +4,7 @@ extends Control
 const Catalog = preload("res://scripts/course_catalog.gd")
 const AttemptStore = preload("res://scripts/attempt_store.gd")
 const DrivingInput = preload("res://scripts/driving_input.gd")
+const XboxUsbBridge = preload("res://scripts/xbox_usb_bridge.gd")
 const COURSE_ART = {
 	"primary_controls": "res://assets/ui/course_art/primary_controls.png",
 	"secondary_controls": "res://assets/ui/course_art/secondary_controls.png",
@@ -46,12 +47,17 @@ var _pending_binding_action: StringName = &""
 var _binding_buttons: Dictionary = {}
 var _binding_notice: Label
 var _controller_status: Label
+var _xbox_usb_bridge: Node
 
 
 func _ready() -> void:
 	DrivingInput.install_actions()
 	DrivingInput.load_keyboard_bindings()
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
+	_xbox_usb_bridge = XboxUsbBridge.new()
+	_xbox_usb_bridge.connection_changed.connect(_on_usb_connection_changed)
+	_xbox_usb_bridge.input_changed.connect(_on_usb_input_changed)
+	add_child(_xbox_usb_bridge)
 	_build_shell()
 	_show_home()
 
@@ -218,9 +224,22 @@ func _on_joy_connection_changed(_device: int, _connected: bool) -> void:
 		_refresh_controller_status()
 
 
+func _on_usb_connection_changed(_connected: bool) -> void:
+	if _page == "settings":
+		_refresh_controller_status()
+
+
+func _on_usb_input_changed() -> void:
+	if _session != null and _session.get("sedan") != null:
+		_session.sedan.controls.last_device = "gamepad"
+
+
 func _refresh_controller_status() -> void:
 	var devices := Input.get_connected_joypads()
-	_controller_status.text = "No controller detected on this Mac." if devices.is_empty() else "Connected: %s" % Input.get_joy_name(devices[0])
+	if _xbox_usb_bridge != null and _xbox_usb_bridge.connected:
+		_controller_status.text = "Connected: Xbox One USB controller (direct input)"
+	else:
+		_controller_status.text = "No controller detected on this Mac." if devices.is_empty() else "Connected: %s" % Input.get_joy_name(devices[0])
 
 
 func _show_courses() -> void:
