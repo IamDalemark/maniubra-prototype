@@ -1,16 +1,29 @@
 extends CharacterBody3D
-## Sidewalk walker; selected walkers cross only with adequate response distance.
+## Sidewalk walker and seeded crossing reactions with response-distance gating.
 
 signal crossing_started(person: Node3D)
+signal crossing_turned_back(person: Node3D)
 
 var points: PackedVector3Array
 var next_index := 0
 var player: Node3D
 var crossing := false
+var crossing_behavior := "walk" # walk, sprint, or turn_back.
+var variable_pace := false
+var behavior_seed := 1
 var traffic: Array = []
 var walking_speed := 1.1
+var running_speed := 3.1
 var _crossing_active := false
 var _crossing_done := false
+var _crossing_origin := Vector3.ZERO
+var _crossing_distance := 0.0
+var _returning := false
+var _turnback_announced := false
+var _hesitation_remaining := 0.0
+var _randomizer := RandomNumberGenerator.new()
+var _behavior_wait := 0.0
+var _run_remaining := 0.0
 var fallen := false
 var _visual: Node3D
 var _fall_target := Vector3.ZERO
@@ -24,6 +37,8 @@ var _collision: CollisionShape3D
 
 
 func _ready() -> void:
+	_randomizer.seed = behavior_seed
+	_behavior_wait = _randomizer.randf_range(8.0, 16.0)
 	var capsule := CapsuleShape3D.new()
 	capsule.radius = 0.28
 	capsule.height = 1.65
@@ -65,8 +80,37 @@ func _physics_process(delta: float) -> void:
 			velocity = Vector3.ZERO
 			return
 		_crossing_active = true
+		_crossing_origin = global_position
+		_crossing_distance = global_position.distance_to(points[0])
 		crossing_started.emit(self)
-	var target := points[next_index]
+	if _hesitation_remaining > 0.0:
+		_hesitation_remaining -= delta
+		velocity = Vector3.ZERO
+		return
+	if _returning and not _turnback_announced:
+		_turnback_announced = true
+		crossing_turned_back.emit(self)
+	if crossing and crossing_behavior == "turn_back" and not _returning:
+		var progress := global_position.distance_to(_crossing_origin) / maxf(_crossing_distance, 0.01)
+		if progress >= 0.42:
+			_returning = true
+			_hesitation_remaining = 0.30
+			velocity = Vector3.ZERO
+			return
+	var desired_speed := walking_speed
+	if crossing and crossing_behavior != "walk":
+		desired_speed = 2.6 if crossing_behavior == "turn_back" and not _returning else running_speed
+	elif variable_pace:
+		_behavior_wait -= delta
+		if _behavior_wait <= 0.0:
+			_behavior_wait = _randomizer.randf_range(9.0, 17.0)
+			_run_remaining = _randomizer.randf_range(1.5, 2.7)
+			if points.size() > 1 and _randomizer.randf() < 0.35:
+				next_index = (next_index + 1) % points.size()
+		if _run_remaining > 0.0:
+			_run_remaining -= delta
+			desired_speed = running_speed
+	var target := _crossing_origin if crossing and _returning else points[next_index]
 	var difference := target - global_position
 	difference.y = 0.0
 	if difference.length() < 0.4:
@@ -80,12 +124,13 @@ func _physics_process(delta: float) -> void:
 		difference.y = 0.0
 	var direction := difference.normalized()
 	rotation.y = lerp_angle(rotation.y, atan2(direction.x, direction.z), minf(delta * 4.0, 1.0))
-	_walk_phase += delta * 7.0
-	_left_arm.rotation.x = sin(_walk_phase) * 0.38
-	_right_arm.rotation.x = -sin(_walk_phase) * 0.38
-	_left_leg.rotation.x = -sin(_walk_phase) * 0.28
-	_right_leg.rotation.x = sin(_walk_phase) * 0.28
-	velocity = direction * walking_speed
+	var running := desired_speed > walking_speed * 1.5
+	_walk_phase += delta * (13.0 if running else 7.0)
+	_left_arm.rotation.x = sin(_walk_phase) * (0.58 if running else 0.38)
+	_right_arm.rotation.x = -sin(_walk_phase) * (0.58 if running else 0.38)
+	_left_leg.rotation.x = -sin(_walk_phase) * (0.50 if running else 0.28)
+	_right_leg.rotation.x = sin(_walk_phase) * (0.50 if running else 0.28)
+	velocity = direction * desired_speed
 	move_and_slide()
 
 
@@ -107,8 +152,8 @@ func _can_cross() -> bool:
 		return false
 	var distance := player.global_position.distance_to(global_position)
 	var speed: float = player.speed_mps()
-	var trigger_distance := maxf(38.0, speed * 4.0)
-	if distance < 20.0 or distance > trigger_distance:
+	var trigger_distance := maxf(48.0, speed * 4.5)
+	if distance < 24.0 or distance > trigger_distance:
 		return false
 	for actor in traffic:
 		if actor != null and actor.global_position.distance_to(global_position) < 13.0:
