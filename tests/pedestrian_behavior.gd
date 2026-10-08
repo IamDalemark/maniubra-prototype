@@ -64,7 +64,7 @@ func run() -> void:
 					person._behavior_wait = 0.0
 			assert(person.global_position.distance_to(origin) > 1.0)
 			assert(roam_speeds.max() - roam_speeds.min() > 0.2)
-			assert(session._events.filter(func(event): return event.get("type") == "pedestrian_crossing").size() == 1)
+			assert(session._events.filter(func(event): return event.get("type") == "pedestrian_crossing" and not event.get("marked", false)).size() == 1)
 			var waypoint_index: int = person.next_index
 			person.global_position = person.points[waypoint_index]
 			for step in 3:
@@ -72,7 +72,7 @@ func run() -> void:
 			assert(person.next_index != waypoint_index and person.velocity.length() > 0.7)
 		else:
 			assert(person.global_position.distance_to(target) < 0.5)
-	assert(session._events.filter(func(event): return event.get("type") == "pedestrian_crossing").size() == 2)
+	assert(session._events.filter(func(event): return event.get("type") == "pedestrian_crossing" and not event.get("marked", false)).size() == 2)
 	session.queue_free()
 	await process_frame
 	var repeat = preload("res://scenes/lessons/open_world.tscn").instantiate()

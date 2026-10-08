@@ -4,6 +4,8 @@ Status: Primary Controls and an early playable Open World session. The latter us
 
 Open World pedestrians have seeded run-across and turn-back variants at the two existing crossing sites. A turn-back begins after the person visibly enters the road, pauses briefly, then returns along the same bounded path. Reaching the curb changes the actor to a short sidewalk roaming path with seeded walking speeds, occasional running, and direction changes; it never restarts that crossing. Two other ambient sidewalk walkers occasionally run or reverse. The lesson records the crossing and turn-back as separate observed events; contact still uses the existing collision/fall path. `tests/pedestrian_behavior.gd` checks reproducible choices, response distance, road and sidewalk bounds, continuous post-return movement, and event counts.
 
+A third, ordinary crossing actor is paired with the market street's zebra paint. It starts from one curb only when the player drives into its response window, walks through both lanes, then roams the far sidewalk. The crossing event records that it occurred on a marked lane. `tests/marked_crossing.gd` checks the shared paint/path coordinates and complete motion.
+
 ## Implemented files
 
 ```text

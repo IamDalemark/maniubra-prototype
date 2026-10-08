@@ -9,6 +9,7 @@ var next_index := 0
 var player: Node3D
 var crossing := false
 var crossing_behavior := "walk" # walk, sprint, or turn_back.
+var marked_crossing := false
 var variable_pace := false
 var behavior_seed := 1
 var traffic: Array = []
@@ -17,6 +18,7 @@ var running_speed := 3.1
 var _crossing_active := false
 var _crossing_done := false
 var roaming_after_turnback := false
+var roaming_after_crosswalk := false
 var _crossing_origin := Vector3.ZERO
 var _crossing_distance := 0.0
 var _returning := false
@@ -126,7 +128,7 @@ func _physics_process(delta: float) -> void:
 		if crossing:
 			_crossing_done = true
 			velocity = Vector3.ZERO
-			if _returning:
+			if _returning or marked_crossing:
 				_begin_sidewalk_roam()
 			return
 		next_index = (next_index + 1) % points.size()
@@ -146,17 +148,18 @@ func _physics_process(delta: float) -> void:
 
 
 func _begin_sidewalk_roam() -> void:
-	# Stay outside the carriageway after returning; offset from the original
-	# sidewalk line so nearby ambient walkers have their own clearance.
+	# Keep the walker on the curb they reached, clear of the travel lanes.
 	var road_direction := signf(points[0].x - _crossing_origin.x)
-	var sidewalk_offset := -road_direction * 0.7
+	var curb := _crossing_origin if _returning else points[0]
+	var sidewalk_offset := (-road_direction if _returning else road_direction) * 0.7
 	points = PackedVector3Array([
-		_crossing_origin + Vector3(sidewalk_offset, 0, -17.0),
-		_crossing_origin + Vector3(sidewalk_offset, 0, 17.0),
+		curb + Vector3(sidewalk_offset, 0, -17.0),
+		curb + Vector3(sidewalk_offset, 0, 17.0),
 	])
 	next_index = _randomizer.randi_range(0, 1)
 	crossing = false
-	roaming_after_turnback = true
+	roaming_after_turnback = _returning
+	roaming_after_crosswalk = marked_crossing and not _returning
 	variable_pace = true
 	_stroll_speed = _randomizer.randf_range(0.8, 1.5)
 	_behavior_wait = _randomizer.randf_range(2.5, 5.0)
@@ -181,6 +184,8 @@ func _can_cross() -> bool:
 		return false
 	var distance := player.global_position.distance_to(global_position)
 	var speed: float = player.speed_mps()
+	if marked_crossing and speed < 1.0:
+		return false
 	var trigger_distance := maxf(48.0, speed * 4.5)
 	if distance < 24.0 or distance > trigger_distance:
 		return false

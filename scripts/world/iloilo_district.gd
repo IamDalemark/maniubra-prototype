@@ -11,6 +11,7 @@ const START := Vector3(-201.8, 0.05, -225.0)
 const DESTINATION := Vector3(211.0, 0.05, 221.0)
 const DESTINATION_SIZE := Vector2(10.0, 13.0)
 const MARKET_STOP_Z := -9.0
+const MARKET_CROSSWALK_Z := -188.0
 
 
 func _ready() -> void:
@@ -77,11 +78,9 @@ func _build_roads() -> void:
 	for z in ROAD_Z:
 		for side in [-1.0, 1.0]:
 			_box(Vector3(374, 0.10, 2.0), Vector3(0, -0.015, z + side * 5.45), Color("b7ad96"), false)
-	for x in ROAD_X:
-		for z in ROAD_Z:
-			for side in [-1.0, 1.0]:
-				for stripe in 5:
-					_box(Vector3(0.48, 0.014, 0.58), Vector3(x + side * (6.2 + stripe * 0.86), 0.03, z - 7.6), Color("f4f0df"), false)
+	# The market crossing spans both travel lanes; pedestrians use its centre.
+	for stripe in 7:
+		_box(Vector3(8.0, 0.014, 0.48), Vector3(-200.0, 0.03, MARKET_CROSSWALK_Z + (stripe - 3) * 0.72), Color("f4f0df"), false, "MarketCrosswalkStripe%d" % stripe)
 	_build_roundabout()
 	# A marked stop-controlled approach on the northbound market street.
 	_box(Vector3(4.1, 0.018, 0.36), Vector3(-202.05, 0.04, MARKET_STOP_Z), Color("f5f2e7"), false)
@@ -296,6 +295,8 @@ func _cone(radius: float, height: float, at: Vector3, color: Color) -> void:
 func _box(size: Vector3, at: Vector3, color: Color, collider: bool, box_name: String = "") -> void:
 	if color.a > 0.0:
 		var visual := MeshInstance3D.new()
+		if not box_name.is_empty() and not collider:
+			visual.name = box_name
 		var mesh := BoxMesh.new()
 		mesh.size = size
 		visual.mesh = mesh

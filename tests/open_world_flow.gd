@@ -19,7 +19,7 @@ func run() -> void:
 	await physics_frame
 	var drive = app._session
 	assert(drive._started and drive.sedan.camera.current)
-	assert(drive.traffic.size() == 6 and drive.pedestrians.size() == 7)
+	assert(drive.traffic.size() == 6 and drive.pedestrians.size() == 8)
 	assert(drive.district.get_children().filter(func(node): return node is StaticBody3D and node.name.begins_with("VendorObstacle")).size() == 3)
 	var car_start: Vector3 = drive.traffic[0].global_position
 	var walker_start: Vector3 = drive.pedestrians[0].global_position
@@ -74,9 +74,9 @@ func run() -> void:
 	assert(drive.district.destination_contains_vehicle(car))
 	drive._physics_process(2.1)
 	assert(drive._venue_reached and drive._toast.visible and drive._started)
-	assert(drive._events.size() == 1)
+	assert(drive._events.filter(func(event): return event.get("type") == "destination_reached").size() == 1)
 	drive._physics_process(3.0)
-	assert(drive._events.size() == 1 and drive._started)
+	assert(drive._events.filter(func(event): return event.get("type") == "destination_reached").size() == 1 and drive._started)
 	drive._end_drive()
 	assert(app._page == "result")
 	assert(app._last_result["destination_reached"])

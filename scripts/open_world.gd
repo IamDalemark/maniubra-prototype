@@ -299,9 +299,12 @@ func _spawn_pedestrians() -> void:
 	var eastern_behavior := "sprint" if western_behavior == "turn_back" else "turn_back"
 	_add_pedestrian(Vector3(-207, 0.05, western_crossing), Vector3(-193, 0.05, western_crossing), true, western_behavior, randomizer.randi())
 	_add_pedestrian(Vector3(193, 0.05, eastern_crossing), Vector3(207, 0.05, eastern_crossing), true, eastern_behavior, randomizer.randi())
+	# A regular walker uses the marked market crossing near the departure point.
+	var crossing_z: float = district.MARKET_CROSSWALK_Z
+	_add_pedestrian(Vector3(-206.8, 0.05, crossing_z), Vector3(-193.2, 0.05, crossing_z), true, "walk", randomizer.randi(), false, true)
 
 
-func _add_pedestrian(start: Vector3, finish: Vector3, is_crossing: bool, behavior: String, seed: int, variable_pace: bool = false) -> void:
+func _add_pedestrian(start: Vector3, finish: Vector3, is_crossing: bool, behavior: String, seed: int, variable_pace: bool = false, marked_crossing: bool = false) -> void:
 	var person = PEDESTRIAN.new()
 	person.points = PackedVector3Array([finish, start]) if not is_crossing else PackedVector3Array([finish])
 	person.position = start
@@ -309,6 +312,7 @@ func _add_pedestrian(start: Vector3, finish: Vector3, is_crossing: bool, behavio
 	person.crossing_behavior = behavior
 	person.behavior_seed = seed
 	person.variable_pace = variable_pace
+	person.marked_crossing = marked_crossing
 	person.player = sedan
 	person.traffic = traffic
 	person.crossing_started.connect(_on_pedestrian_crossing)
@@ -320,8 +324,12 @@ func _add_pedestrian(start: Vector3, finish: Vector3, is_crossing: bool, behavio
 func _on_pedestrian_crossing(person: Node3D) -> void:
 	if not _started or _paused:
 		return
-	var detail := "A pedestrian ran into the road near your position." if person.crossing_behavior != "walk" else "A pedestrian entered the road near your position."
-	_events.append({"type": "pedestrian_crossing", "elapsed_seconds": snappedf(_elapsed, 0.01), "detail": detail, "location": [snappedf(person.global_position.x, 0.1), snappedf(person.global_position.z, 0.1)]})
+	var detail := "A pedestrian entered the road near your position."
+	if person.marked_crossing:
+		detail = "A pedestrian entered the marked crossing ahead."
+	elif person.crossing_behavior != "walk":
+		detail = "A pedestrian ran into the road near your position."
+	_events.append({"type": "pedestrian_crossing", "marked": person.marked_crossing, "elapsed_seconds": snappedf(_elapsed, 0.01), "detail": detail, "location": [snappedf(person.global_position.x, 0.1), snappedf(person.global_position.z, 0.1)]})
 
 
 func _on_pedestrian_turn_back(person: Node3D) -> void:
