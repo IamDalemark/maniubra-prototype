@@ -2,7 +2,7 @@
 
 Status: Primary Controls and an early playable Open World session. The latter uses procedural district geometry, scripted traffic and pedestrians, a destination badge, and a small set of contact/stop-line incident checks. General rule evaluators and mature hazard orchestration remain design boundaries.
 
-Open World pedestrians now have seeded run-across and turn-back variants at the two existing crossing sites. A turn-back begins after the person visibly enters the road, pauses briefly, then returns along the same bounded path. Two ambient sidewalk walkers occasionally run or reverse. The lesson records the crossing and turn-back as separate observed events; contact still uses the existing collision/fall path. `tests/pedestrian_behavior.gd` checks reproducible choices, response distance, path bounds, completion, and event counts.
+Open World pedestrians have seeded run-across and turn-back variants at the two existing crossing sites. A turn-back begins after the person visibly enters the road, pauses briefly, then returns along the same bounded path. Reaching the curb changes the actor to a short sidewalk roaming path with seeded walking speeds, occasional running, and direction changes; it never restarts that crossing. Two other ambient sidewalk walkers occasionally run or reverse. The lesson records the crossing and turn-back as separate observed events; contact still uses the existing collision/fall path. `tests/pedestrian_behavior.gd` checks reproducible choices, response distance, road and sidewalk bounds, continuous post-return movement, and event counts.
 
 ## Implemented files
 

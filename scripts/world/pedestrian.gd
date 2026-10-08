@@ -16,6 +16,7 @@ var walking_speed := 1.1
 var running_speed := 3.1
 var _crossing_active := false
 var _crossing_done := false
+var roaming_after_turnback := false
 var _crossing_origin := Vector3.ZERO
 var _crossing_distance := 0.0
 var _returning := false
@@ -24,6 +25,7 @@ var _hesitation_remaining := 0.0
 var _randomizer := RandomNumberGenerator.new()
 var _behavior_wait := 0.0
 var _run_remaining := 0.0
+var _stroll_speed := 1.1
 var fallen := false
 var _visual: Node3D
 var _fall_target := Vector3.ZERO
@@ -101,11 +103,18 @@ func _physics_process(delta: float) -> void:
 	if crossing and crossing_behavior != "walk":
 		desired_speed = 2.6 if crossing_behavior == "turn_back" and not _returning else running_speed
 	elif variable_pace:
+		desired_speed = _stroll_speed
 		_behavior_wait -= delta
 		if _behavior_wait <= 0.0:
-			_behavior_wait = _randomizer.randf_range(9.0, 17.0)
-			_run_remaining = _randomizer.randf_range(1.5, 2.7)
-			if points.size() > 1 and _randomizer.randf() < 0.35:
+			_behavior_wait = _randomizer.randf_range(4.0, 8.0) if roaming_after_turnback else _randomizer.randf_range(9.0, 17.0)
+			if roaming_after_turnback:
+				_stroll_speed = _randomizer.randf_range(0.75, 1.55)
+				desired_speed = _stroll_speed
+				if _randomizer.randf() < 0.5:
+					_run_remaining = _randomizer.randf_range(1.2, 2.4)
+			else:
+				_run_remaining = _randomizer.randf_range(1.5, 2.7)
+			if points.size() > 1 and _randomizer.randf() < (0.25 if roaming_after_turnback else 0.35):
 				next_index = (next_index + 1) % points.size()
 		if _run_remaining > 0.0:
 			_run_remaining -= delta
@@ -117,6 +126,8 @@ func _physics_process(delta: float) -> void:
 		if crossing:
 			_crossing_done = true
 			velocity = Vector3.ZERO
+			if _returning:
+				_begin_sidewalk_roam()
 			return
 		next_index = (next_index + 1) % points.size()
 		target = points[next_index]
@@ -125,13 +136,31 @@ func _physics_process(delta: float) -> void:
 	var direction := difference.normalized()
 	rotation.y = lerp_angle(rotation.y, atan2(direction.x, direction.z), minf(delta * 4.0, 1.0))
 	var running := desired_speed > walking_speed * 1.5
-	_walk_phase += delta * (13.0 if running else 7.0)
+	_walk_phase += delta * (13.0 if running else 7.0 * desired_speed / walking_speed)
 	_left_arm.rotation.x = sin(_walk_phase) * (0.58 if running else 0.38)
 	_right_arm.rotation.x = -sin(_walk_phase) * (0.58 if running else 0.38)
 	_left_leg.rotation.x = -sin(_walk_phase) * (0.50 if running else 0.28)
 	_right_leg.rotation.x = sin(_walk_phase) * (0.50 if running else 0.28)
 	velocity = direction * desired_speed
 	move_and_slide()
+
+
+func _begin_sidewalk_roam() -> void:
+	# Stay outside the carriageway after returning; offset from the original
+	# sidewalk line so nearby ambient walkers have their own clearance.
+	var road_direction := signf(points[0].x - _crossing_origin.x)
+	var sidewalk_offset := -road_direction * 0.7
+	points = PackedVector3Array([
+		_crossing_origin + Vector3(sidewalk_offset, 0, -17.0),
+		_crossing_origin + Vector3(sidewalk_offset, 0, 17.0),
+	])
+	next_index = _randomizer.randi_range(0, 1)
+	crossing = false
+	roaming_after_turnback = true
+	variable_pace = true
+	_stroll_speed = _randomizer.randf_range(0.8, 1.5)
+	_behavior_wait = _randomizer.randf_range(2.5, 5.0)
+	_run_remaining = 0.0
 
 
 func fall(impact_direction: Vector3) -> void:

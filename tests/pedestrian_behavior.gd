@@ -25,6 +25,7 @@ func run() -> void:
 	assert(sidewalk.velocity.length() > 2.3)
 	assert([crossing_a.crossing_behavior, crossing_b.crossing_behavior].has("sprint"))
 	assert([crossing_a.crossing_behavior, crossing_b.crossing_behavior].has("turn_back"))
+	var first_setup := [crossing_a.points[0], crossing_a.crossing_behavior, crossing_b.points[0], crossing_b.crossing_behavior]
 	var returner = crossing_a if crossing_a.crossing_behavior == "turn_back" else crossing_b
 	var runner = crossing_b if returner == crossing_a else crossing_a
 	for person in [returner, runner]:
@@ -50,18 +51,35 @@ func run() -> void:
 		assert(person._crossing_done and maximum_speed > 2.3)
 		if person == returner:
 			assert(person.global_position.distance_to(origin) < 0.5)
+			assert(person.roaming_after_turnback and not person.crossing)
 			assert(session._events.filter(func(event): return event.get("type") == "pedestrian_turn_back").size() == 1)
+			var roam_speeds: Array[float] = []
+			person._behavior_wait = 0.0
+			for roam_frame in 240:
+				await physics_frame
+				roam_speeds.append(person.velocity.length())
+				assert(person.global_position.x < origin.x + 0.5 and person.global_position.x > origin.x - 1.2)
+				assert(absf(person.global_position.z - origin.z) < 17.5)
+				if roam_frame == 110:
+					person._behavior_wait = 0.0
+			assert(person.global_position.distance_to(origin) > 1.0)
+			assert(roam_speeds.max() - roam_speeds.min() > 0.2)
+			assert(session._events.filter(func(event): return event.get("type") == "pedestrian_crossing").size() == 1)
+			var waypoint_index: int = person.next_index
+			person.global_position = person.points[waypoint_index]
+			for step in 3:
+				await physics_frame
+			assert(person.next_index != waypoint_index and person.velocity.length() > 0.7)
 		else:
 			assert(person.global_position.distance_to(target) < 0.5)
 	assert(session._events.filter(func(event): return event.get("type") == "pedestrian_crossing").size() == 2)
-	var first_setup := [crossing_a.points[0], crossing_a.crossing_behavior, crossing_b.points[0], crossing_b.crossing_behavior]
 	session.queue_free()
 	await process_frame
 	var repeat = preload("res://scenes/lessons/open_world.tscn").instantiate()
 	root.add_child(repeat)
 	repeat.start_attempt({"hazard_seed": 12345})
 	assert(first_setup == [repeat.pedestrians[5].points[0], repeat.pedestrians[5].crossing_behavior, repeat.pedestrians[6].points[0], repeat.pedestrians[6].crossing_behavior])
-	print("PASS: seeded runners and turn-backs stay bounded, finish once, and log the reaction")
+	print("PASS: seeded crossings finish once; turn-back continues roaming at varied speeds")
 	repeat.queue_free()
 	await process_frame
 	await create_timer(0.1).timeout

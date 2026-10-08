@@ -71,7 +71,7 @@ Pedestrians use sidewalk paths, wait near shops/stops, and cross at authored cro
 Two behavior groups:
 
 1. Ambient walkers follow sidewalks and ordinary crossings. Traffic yields when their crossing is occupied.
-2. The current pair of authored crossing encounters use seeded positions and behaviors: one runs through, while the other hesitates partway and runs back. They wait at the roadside until the player is within a response-distance window and nearby traffic is clear. Two sidewalk walkers also have occasional short runs and direction reversals. A broader encounter pool and traffic-conflict checks remain future work.
+2. The current pair of authored crossing encounters use seeded positions and behaviors: one runs through, while the other hesitates partway and runs back. On reaching the curb, the turn-back actor continues roaming within a short sidewalk corridor at changing speeds, with occasional runs and reversals; the crossing remains a one-time event. They wait at the roadside until the player is within a response-distance window and nearby traffic is clear. Two other sidewalk walkers also have occasional short runs and direction reversals. A broader encounter pool and traffic-conflict checks remain future work.
 
 Choose hazards with a per-session seed, cooldown, occupancy checks and a response-distance check based on approach speed. A pedestrian must exist at the roadside before entering the lane. Suppress the event if the player is already too close to respond. Avoid stacking a crossing, oncoming vehicle and blocked lane into an unavoidable collision. A changed seed varies encounters, while the same seed plus recorded events helps reproduce faults.
 
