@@ -1,17 +1,11 @@
 extends Node
 ## Feeds original Xbox One USB (045e:02d1) reports into the existing Godot actions.
 
+const ControllerBindings = preload("res://scripts/controller_bindings.gd")
 signal connection_changed(connected: bool)
 signal input_changed
 
 const TIMEOUT_SECONDS := 0.5
-const BUTTONS := [
-	[4, 0x10, "drive_handbrake"], [4, 0x10, "ui_accept"],
-	[4, 0x20, "ui_cancel"], [4, 0x40, "drive_seatbelt"],
-	[4, 0x80, "drive_ignition"], [4, 0x04, "drive_pause"],
-	[5, 0x01, "drive_reset"], [5, 0x02, "drive_gear_down"],
-	[5, 0x10, "drive_clutch"], [5, 0x20, "drive_gear_up"],
-]
 const ACTIONS := [
 	"drive_handbrake", "ui_accept", "ui_cancel", "drive_seatbelt",
 	"drive_ignition", "drive_pause", "drive_reset", "drive_gear_down",
@@ -66,13 +60,24 @@ func _process(delta: float) -> void:
 
 
 func _apply_report(packet: PackedByteArray) -> void:
-	for entry in BUTTONS:
-		_set_action(entry[2], 1.0 if packet[entry[0] + 4] & entry[1] else 0.0)
-	_set_axis("drive_left", "drive_right", _stick(packet, 14))
-	_set_axis("look_left", "look_right", _stick(packet, 18))
-	_set_axis("look_up", "look_down", _stick(packet, 20))
-	_set_action("drive_brake", clampf(float(_u16(packet, 10)) / 1023.0, 0.0, 1.0))
-	_set_action("drive_throttle", clampf(float(_u16(packet, 12)) / 1023.0, 0.0, 1.0))
+	var buttons := {
+		"a": bool(packet[8] & 0x10), "b": bool(packet[8] & 0x20),
+		"x": bool(packet[8] & 0x40), "y": bool(packet[8] & 0x80),
+		"menu": bool(packet[8] & 0x04), "view": bool(packet[8] & 0x08),
+		"up": bool(packet[9] & 0x01), "down": bool(packet[9] & 0x02),
+		"left": bool(packet[9] & 0x04), "right": bool(packet[9] & 0x08),
+		"lb": bool(packet[9] & 0x10), "rb": bool(packet[9] & 0x20),
+		"ls_click": bool(packet[9] & 0x40), "rs_click": bool(packet[9] & 0x80),
+	}
+	for binding in ControllerBindings.BUTTON_ACTIONS:
+		_set_action(binding[0], 1.0 if buttons.get(ControllerBindings.source(binding[0]), false) else 0.0)
+	var sticks := {"ls_x": _stick(packet, 14), "ls_y": _stick(packet, 16), "rs_x": _stick(packet, 18), "rs_y": _stick(packet, 20)}
+	_set_axis("drive_left", "drive_right", sticks[ControllerBindings.source("steering_axis")])
+	_set_axis("look_left", "look_right", sticks[ControllerBindings.source("look_x_axis")])
+	_set_axis("look_up", "look_down", sticks[ControllerBindings.source("look_y_axis")])
+	var pedals := {"lt": clampf(float(_u16(packet, 10)) / 1023.0, 0.0, 1.0), "rt": clampf(float(_u16(packet, 12)) / 1023.0, 0.0, 1.0)}
+	_set_action("drive_brake", pedals[ControllerBindings.source("drive_brake")])
+	_set_action("drive_throttle", pedals[ControllerBindings.source("drive_throttle")])
 
 
 func _u16(packet: PackedByteArray, index: int) -> int:

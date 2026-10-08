@@ -4,6 +4,7 @@ extends Control
 const Catalog = preload("res://scripts/course_catalog.gd")
 const AttemptStore = preload("res://scripts/attempt_store.gd")
 const DrivingInput = preload("res://scripts/driving_input.gd")
+const ControllerBindings = preload("res://scripts/controller_bindings.gd")
 const XboxUsbBridge = preload("res://scripts/xbox_usb_bridge.gd")
 const COURSE_ART = {
 	"primary_controls": "res://assets/ui/course_art/primary_controls.png",
@@ -48,11 +49,14 @@ var _binding_buttons: Dictionary = {}
 var _binding_notice: Label
 var _controller_status: Label
 var _xbox_usb_bridge: Node
+var _controller_options: Dictionary = {}
+var _controller_notice: Label
 
 
 func _ready() -> void:
 	DrivingInput.install_actions()
 	DrivingInput.load_keyboard_bindings()
+	ControllerBindings.load_saved()
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
 	_xbox_usb_bridge = XboxUsbBridge.new()
 	_xbox_usb_bridge.connection_changed.connect(_on_usb_connection_changed)
@@ -113,6 +117,7 @@ func _clear_page(page: String, title: String, description: String) -> void:
 	_page = page
 	_pending_binding_action = &""
 	_binding_buttons.clear()
+	_controller_options.clear()
 	for child in _content.get_children():
 		_content.remove_child(child)
 		child.queue_free()
@@ -149,7 +154,7 @@ func _show_home() -> void:
 
 
 func _show_settings() -> void:
-	_clear_page("settings", "Settings", "Adjust the cockpit, audio, and keyboard controls.")
+	_clear_page("settings", "Settings", "Adjust the cockpit, audio, and input controls.")
 	var fov_label := _add_text("Camera field of view: %.0f°" % _camera_fov, 18)
 	var fov_slider := HSlider.new()
 	fov_slider.min_value = 60.0
@@ -166,10 +171,30 @@ func _show_settings() -> void:
 	audio_slider.value = _audio_level
 	audio_slider.value_changed.connect(func(value: float): _audio_level = value; audio_label.text = "Audio volume: %d%%" % roundi(value * 100))
 	_content.add_child(audio_slider)
-	_add_text("Xbox controller", 24, Color("f5c548"))
+	_add_text("Controller bindings", 24, Color("f5c548"))
 	_controller_status = _add_text("", 17, Color("d4e7d6"))
 	_refresh_controller_status()
-	_add_text("Left stick steer · right trigger accelerate · left trigger brake · LB clutch · RB shift up · D-pad down shift down · A handbrake · Y engine · X seatbelt · D-pad up restart · Menu pause · right stick look. A selects and B goes back in menus.", 16, Color("d4e7d6"))
+	_add_text("Choose a controller control for each action. If a driving control is already assigned, the two assignments swap. Menu select and back are separate from driving controls.", 16, Color("d4e7d6"))
+	_controller_notice = _add_text("", 16, Color("eecb7d"))
+	for binding in ControllerBindings.AXIS_ACTIONS + ControllerBindings.BUTTON_ACTIONS:
+		var key: String = binding[0]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		_content.add_child(row)
+		var caption := Label.new()
+		caption.text = binding[1]
+		caption.custom_minimum_size.x = 190
+		caption.add_theme_font_size_override("font_size", 17)
+		row.add_child(caption)
+		var picker := OptionButton.new()
+		picker.custom_minimum_size = Vector2(210, 39)
+		for option in ControllerBindings.options_for(key):
+			picker.add_item(option[1])
+		picker.item_selected.connect(_change_controller_binding.bind(key))
+		row.add_child(picker)
+		_controller_options[key] = picker
+	_refresh_controller_options()
+	_add_button("Restore default controller bindings", _reset_controller_bindings)
 	_add_text("Keyboard bindings", 24, Color("f5c548"))
 	_add_text("Select an action, then press a key. Escape cancels. Controller axes and buttons use the Xbox layout above.", 16, Color("d4e7d6"))
 	_binding_notice = _add_text("", 16, Color("eecb7d"))
@@ -217,6 +242,31 @@ func _reset_keyboard_bindings() -> void:
 	DrivingInput.reset_keyboard_bindings()
 	_refresh_binding_buttons()
 	_binding_notice.text = "Default keys restored." if DrivingInput.save_keyboard_bindings() else "Defaults restored for this run, but could not be saved."
+
+
+func _change_controller_binding(index: int, key: String) -> void:
+	var option: Array = ControllerBindings.options_for(key)[index]
+	_xbox_usb_bridge._release_all()
+	if ControllerBindings.set_binding(key, option[0]):
+		_refresh_controller_options()
+		_controller_notice.text = "Controller bindings saved." if ControllerBindings.save() else "Binding changed for this run, but could not be saved."
+
+
+func _reset_controller_bindings() -> void:
+	_xbox_usb_bridge._release_all()
+	ControllerBindings.reset()
+	_refresh_controller_options()
+	_controller_notice.text = "Default controller bindings restored." if ControllerBindings.save() else "Defaults restored for this run, but could not be saved."
+
+
+func _refresh_controller_options() -> void:
+	for key in _controller_options:
+		var picker: OptionButton = _controller_options[key]
+		var options: Array = ControllerBindings.options_for(key)
+		for index in options.size():
+			if options[index][0] == ControllerBindings.source(key):
+				picker.select(index)
+				break
 
 
 func _on_joy_connection_changed(_device: int, _connected: bool) -> void:

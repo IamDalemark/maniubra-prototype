@@ -1,6 +1,7 @@
 extends RefCounted
 ## One semantic input state for keyboard and standard gamepads.
 
+const ControllerBindings = preload("res://scripts/controller_bindings.gd")
 const FILE_VERSION := 1
 const BINDINGS := [
 	{"action": "drive_left", "label": "Steer left", "key": KEY_A},
@@ -16,13 +17,6 @@ const BINDINGS := [
 	{"action": "drive_reset", "label": "Restart drive", "key": KEY_R},
 	{"action": "drive_pause", "label": "Pause", "key": KEY_ESCAPE},
 ]
-const CONTROLLER_NAMES := {
-	"drive_left": "LS left", "drive_right": "LS right", "drive_throttle": "RT", "drive_brake": "LT",
-	"drive_clutch": "LB", "drive_gear_up": "RB", "drive_gear_down": "D-pad down",
-	"drive_handbrake": "A", "drive_ignition": "Y", "drive_seatbelt": "X",
-	"drive_reset": "D-pad up", "drive_pause": "Menu",
-}
-
 var steering := 0.0
 var throttle := 0.0
 var brake := 0.0
@@ -38,24 +32,7 @@ static func install_actions() -> void:
 			InputMap.add_action(action, 0.16)
 		if keyboard_key(action) == KEY_NONE:
 			_replace_keyboard_key(action, binding["key"])
-	_axis("drive_left", JOY_AXIS_LEFT_X, -1.0)
-	_axis("drive_right", JOY_AXIS_LEFT_X, 1.0)
-	_axis("drive_throttle", JOY_AXIS_TRIGGER_RIGHT, 1.0)
-	_axis("drive_brake", JOY_AXIS_TRIGGER_LEFT, 1.0)
-	_button("drive_clutch", JOY_BUTTON_LEFT_SHOULDER)
-	_button("drive_handbrake", JOY_BUTTON_A)
-	_button("drive_gear_up", JOY_BUTTON_RIGHT_SHOULDER)
-	_button("drive_gear_down", JOY_BUTTON_DPAD_DOWN)
-	_button("drive_ignition", JOY_BUTTON_Y)
-	_button("drive_seatbelt", JOY_BUTTON_X)
-	_button("drive_reset", JOY_BUTTON_DPAD_UP)
-	_button("drive_pause", JOY_BUTTON_START)
-	_button("ui_accept", JOY_BUTTON_A)
-	_button("ui_cancel", JOY_BUTTON_B)
-	_axis("look_left", JOY_AXIS_RIGHT_X, -1.0)
-	_axis("look_right", JOY_AXIS_RIGHT_X, 1.0)
-	_axis("look_up", JOY_AXIS_RIGHT_Y, -1.0)
-	_axis("look_down", JOY_AXIS_RIGHT_Y, 1.0)
+	ControllerBindings.apply_to_input_map()
 
 
 static func keyboard_key(action: StringName) -> Key:
@@ -70,7 +47,7 @@ static func keyboard_name(action: StringName) -> String:
 
 
 static func display_name(action: StringName, device: String) -> String:
-	return CONTROLLER_NAMES.get(String(action), "?") if device == "gamepad" else keyboard_name(action)
+	return ControllerBindings.label_for_action(String(action)) if device == "gamepad" else keyboard_name(action)
 
 
 static func set_keyboard_binding(action: StringName, key: Key) -> bool:
@@ -141,7 +118,7 @@ static func keyboard_hint() -> String:
 
 
 static func controller_hint() -> String:
-	return "LS steer · RT accelerate · LT brake · LB clutch · RB/D-pad down gears · A handbrake · Y engine · X seatbelt · D-pad up restart · Menu pause · RS look"
+	return "%s steer · %s accelerate · %s brake · %s clutch · %s/%s gears · %s handbrake · %s engine · %s seatbelt · %s restart · %s pause · %s look" % [ControllerBindings.short_label_for_source(ControllerBindings.source("steering_axis")), display_name("drive_throttle", "gamepad"), display_name("drive_brake", "gamepad"), display_name("drive_clutch", "gamepad"), display_name("drive_gear_up", "gamepad"), display_name("drive_gear_down", "gamepad"), display_name("drive_handbrake", "gamepad"), display_name("drive_ignition", "gamepad"), display_name("drive_seatbelt", "gamepad"), display_name("drive_reset", "gamepad"), display_name("drive_pause", "gamepad"), ControllerBindings.short_label_for_source(ControllerBindings.source("look_x_axis"))]
 
 
 static func _bindings_path() -> String:
@@ -155,27 +132,6 @@ static func _replace_keyboard_key(action: StringName, key: Key) -> void:
 			InputMap.action_erase_event(action, old)
 	var event := InputEventKey.new()
 	event.physical_keycode = key
-	InputMap.action_add_event(action, event)
-
-
-static func _axis(action: StringName, axis: JoyAxis, value: float) -> void:
-	if not InputMap.has_action(action):
-		InputMap.add_action(action, 0.16)
-	for existing in InputMap.action_get_events(action):
-		if existing is InputEventJoypadMotion and existing.axis == axis and is_equal_approx(existing.axis_value, value):
-			return
-	var event := InputEventJoypadMotion.new()
-	event.axis = axis
-	event.axis_value = value
-	InputMap.action_add_event(action, event)
-
-
-static func _button(action: StringName, button: JoyButton) -> void:
-	for existing in InputMap.action_get_events(action):
-		if existing is InputEventJoypadButton and existing.button_index == button:
-			return
-	var event := InputEventJoypadButton.new()
-	event.button_index = button
 	InputMap.action_add_event(action, event)
 
 
