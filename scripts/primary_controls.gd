@@ -61,10 +61,30 @@ var _reverse_z := 0.0
 var _context: Dictionary = {}
 
 
+func _lesson_steps() -> Array:
+	return LESSON_STEPS
+
+
+func _metric_steps() -> Dictionary:
+	return METRIC_STEPS
+
+
+func _lesson_heading() -> String:
+	return "PRIMARY CONTROLS"
+
+
+func _spawn_position() -> Vector3:
+	return SPAWN_POSITION
+
+
+func _is_recovering() -> bool:
+	return _step > 0 and not sedan.gearbox.engine_running
+
+
 func _ready() -> void:
 	_build_yard()
 	sedan = SEDAN_SCENE.instantiate()
-	sedan.position = SPAWN_POSITION
+	sedan.position = _spawn_position()
 	add_child(sedan)
 	_connect_sedan_signals()
 	_build_ui()
@@ -155,10 +175,10 @@ func _input(event: InputEvent) -> void:
 
 
 func _advance(message: String) -> void:
-	_events.append({"type": "step_completed", "step": _step, "step_id": LESSON_STEPS[_step].id, "elapsed_seconds": snappedf(_elapsed, 0.01), "detail": message})
+	_events.append({"type": "step_completed", "step": _step, "step_id": _lesson_steps()[_step].id, "elapsed_seconds": snappedf(_elapsed, 0.01), "detail": message})
 	_last_notice = message
 	_step += 1
-	if _step == LESSON_STEPS.size():
+	if _step == _lesson_steps().size():
 		_finish()
 
 
@@ -218,7 +238,7 @@ func _finish() -> void:
 	var result := _context.duplicate(true)
 	result["scenario_version"] = 3
 	result["assessment_version"] = 3
-	result["step_count"] = LESSON_STEPS.size()
+	result["step_count"] = _lesson_steps().size()
 	result["unix_time"] = Time.get_unix_time_from_system()
 	result["completed"] = true
 	result["elapsed_seconds"] = snappedf(_elapsed, 0.1)
@@ -240,7 +260,7 @@ func _restart() -> void:
 	remove_child(old)
 	old.queue_free()
 	sedan = SEDAN_SCENE.instantiate()
-	sedan.position = SPAWN_POSITION
+	sedan.position = _spawn_position()
 	add_child(sedan)
 	_connect_sedan_signals()
 	start_attempt(_context)
@@ -273,9 +293,9 @@ func _update_ui() -> void:
 	var engine_status := "RUNNING" if sedan.gearbox.engine_running else ("STALLED" if sedan.gearbox.engine_stalled else "OFF")
 	var values := {"speed": "%02d km/h" % roundi(sedan.speed_mps() * 3.6), "rpm": "%04d" % roundi(sedan.gearbox.engine_rpm), "gear": gear_name, "engine": engine_status, "clutch": "%d%%" % roundi(sedan.controls.clutch * 100), "brake": "%d%%" % roundi(sedan.controls.brake * 100), "handbrake": "ON" if sedan.controls.handbrake else "OFF", "seatbelt": "ON" if sedan.seatbelt_fastened else "OFF"}
 	var queued := 0
-	for id in METRIC_STEPS:
+	for id in _metric_steps():
 		_metrics[id].text = id.to_upper() + "  " + values[id]
-		if METRIC_STEPS[id] <= _step and not _metric_reveal_at.has(id):
+		if _metric_steps()[id] <= _step and not _metric_reveal_at.has(id):
 			_metric_reveal_at[id] = _lesson_clock + queued * 0.32
 			queued += 1
 	_update_metric_reveal()
@@ -350,12 +370,12 @@ func _instruction(text: String, focus: String, index: int, total: int) -> Dictio
 
 
 func _update_guidance() -> void:
-	var step: Dictionary = LESSON_STEPS[mini(_step, LESSON_STEPS.size() - 1)]
+	var step: Dictionary = _lesson_steps()[mini(_step, _lesson_steps().size() - 1)]
 	var instruction := _teaching_action()
-	var recovering: bool = _step > 0 and not sedan.gearbox.engine_running
+	var recovering: bool = _is_recovering()
 	_prompt.text = "Restart the engine" if recovering else step.goal
 	_why.text = "WHY  " + ("The engine stopped. Hold the clutch down to restart without moving." if recovering else step.why)
-	_action_progress.text = "PRIMARY CONTROLS  %d / %d  •  ACTION %d / %d" % [mini(_step + 1, LESSON_STEPS.size()), LESSON_STEPS.size(), instruction.index, instruction.total]
+	_action_progress.text = "%s  %d / %d  •  ACTION %d / %d" % [_lesson_heading(), mini(_step + 1, _lesson_steps().size()), _lesson_steps().size(), instruction.index, instruction.total]
 	_action.text = _bound_text(instruction.text)
 	var focus: String = instruction.focus
 	sedan.set_lesson_focus([focus] if _started and focus != "" else [])
