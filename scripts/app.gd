@@ -26,7 +26,7 @@ const LESSON_ART = {
 const LESSON_SUMMARY = {
 	"manual_basics": "Start the engine, clutch, shift, steer, stop, and reverse.",
 	"secondary_basics": "Signals, lights, wipers, horn, and hazards.",
-	"parking": "Practice precise placement and clearance.",
+	"parking": "Back into a bay with simple, glowing control cues.",
 	"reversing": "Back up with control and observation.",
 	"left_turn": "Choose the lane, signal, and yield.",
 	"right_turn": "Check restrictions and make a safe turn.",
@@ -460,6 +460,8 @@ func _show_briefing(lesson_id: String) -> void:
 		_add_text("Keyboard: " + DrivingInput.keyboard_hint() + " · mouse look.\nXbox: " + DrivingInput.controller_hint() + ". The seatbelt button can also be clicked while paused.", 17, Color("d4e7d6"))
 		if _course_id == "open_world":
 			_add_text(lesson.get("briefing", "Molo Plaza appears as an optional venue name while you drive. Find it using the streets and signs; stop in its painted bay for a badge. You can explore for as long as you like and end the drive from pause."), 17, Color("f5d47d"))
+		elif lesson.has("briefing"):
+			_add_text(lesson.briefing, 17, Color("f5d47d"))
 		var previous := AttemptStore.load_attempts()
 		var same_count := 0
 		for attempt in previous:

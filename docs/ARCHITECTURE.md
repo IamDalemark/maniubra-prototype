@@ -1,6 +1,6 @@
 # Minimal architecture
 
-Status: Primary Controls and two playable Open World maps (the Iloilo district and compact market scenario). The latter uses procedural district geometry, scripted traffic and pedestrians, a destination badge, and a small set of contact/stop-line incident checks. General rule evaluators and mature hazard orchestration remain design boundaries.
+Status: Primary Controls, guided backing parking and two playable Open World maps (the Iloilo district and compact market scenario). The latter uses procedural district geometry, scripted traffic and pedestrians, a destination badge, and a small set of contact/stop-line incident checks. General rule evaluators and mature hazard orchestration remain design boundaries.
 
 Open World pedestrians have seeded run-across and turn-back variants at the two existing crossing sites. A turn-back begins after the person visibly enters the road, pauses briefly, then returns along the same bounded path. Reaching the curb changes the actor to a short sidewalk roaming path with seeded walking speeds, occasional running, and direction changes; it never restarts that crossing. Two other ambient sidewalk walkers occasionally run or reverse. The lesson records the crossing and turn-back as separate observed events; contact still uses the existing collision/fall path. `tests/pedestrian_behavior.gd` checks reproducible choices, response distance, road and sidewalk bounds, continuous post-return movement, and event counts.
 
@@ -16,7 +16,11 @@ scenes/app.tscn               Root Control scene
 scripts/app.gd               Main menu → courses → lessons → briefing → back
 scripts/course_catalog.gd    Four courses and thirteen stable lesson records
 scenes/lessons/primary_controls.tscn   First playable driving session
-scripts/primary_controls.gd            Yard, guided steps, HUD, result events
+scripts/primary_controls.gd            Yard, reusable beginner guide, HUD, result events
+scenes/lessons/backing_parking.tscn     First individually selectable parking variant
+scripts/backing_parking.gd             Bay geometry, backing steps, footprint/heading/hold, feedback
+scripts/parking_view.gd                Live car/bay teaching diagram
+tests/backing_parking.gd               Criteria boundaries, real parking drive, persistence/retry
 scenes/lessons/open_world.tscn           Connected free-driving session
 scripts/open_world.gd                    Optional venue, badge, traffic ownership, review
 scenes/world/iloilo_district.tscn        Compressed Iloilo-inspired road scene
@@ -57,9 +61,13 @@ AGENTS.md                    Repository rules
 
 `app.gd` owns the menu controls and current navigation state. `course_catalog.gd` contains curriculum data only and returns copies of its data. Course IDs are `primary_controls`, `secondary_controls`, `maneuvers`, and `open_world`. The catalog holds one initial combined lesson for each controls course, nine maneuver lessons, and two open-world lessons.
 
-Primary Controls and Open World have real scene paths and are selectable. The remaining briefings accurately show unavailable lessons. `app.gd` owns image-card selection, session creation/removal, a timestamped result timeline, saved results, and retry; `primary_controls.gd` owns its exercise, feedback, upper-left driver check, and upper-right error toast. Rejected shifts, stalls, and blocked ignition show a timed corrective toast while their events remain in attempt history. Open World also records pedestrian, vehicle and stall contacts, plus rolling through its one marked stop line, and shows corrective toasts. The driver check reads sedan seatbelt state and handbrake input; its seatbelt button calls the same toggle as the B key. The seatbelt currently affects presentation only. There is no numeric pass/fail score. UI controls are built in scripts to keep the prototype small; extract dedicated scenes only when presentation work makes that useful.
+Primary Controls, the `parking` maneuver and Open World have real scene paths and are selectable. The remaining briefings accurately show unavailable lessons. `app.gd` owns image-card selection, session creation/removal, a timestamped result timeline, saved results, and retry; `primary_controls.gd` owns its exercise, feedback, upper-left driver check, and upper-right error toast. Rejected shifts, stalls, and blocked ignition show a timed corrective toast while their events remain in attempt history. Open World also records pedestrian, vehicle and stall contacts, plus rolling through its one marked stop line, and shows corrective toasts. The driver check reads sedan seatbelt state and handbrake input; its seatbelt button calls the same toggle as the B key. The seatbelt currently affects presentation only. There is no numeric pass/fail score. UI controls are built in scripts to keep the prototype small; extract dedicated scenes only when presentation work makes that useful.
 
 Primary Controls owns its centered goal/reason/action panel and a small shared-world `SubViewport` close-up. Named lesson steps retain the eight existing exercise positions, with stable `step_id` values in completion events. The current action is derived from observed clutch, gear, throttle/brake and engine state. Metric labels are introduced by step, then revealed at 0.32-second intervals; the reveal clock freezes on pause and clears on restart. The sedan exposes `set_lesson_focus()` and original physical-control mesh groups, using a gold emissive overlay that restores base materials on focus changes. A reserved render layer isolates controls for the close-up; the main camera remains first person. No highlighting is enabled by Open World. `tests/beginner_guidance.gd` checks cue progression, device labels, recovery, reveal and reset. Stop completion now requires less than 0.12 m/s, which rounds to 0 km/h in the HUD; assessment version 3 identifies this change.
+
+`backing_parking.gd` extends Primary Controls directly, overriding its named steps, metric introduction, spawn, guidance actions, markings/cones, progression and result. Small methods in the parent let it reuse the existing centered guide, glowing controls, close-up, driver check, pause/restart and corrective engine/shift feedback. There is no generic lesson framework. The existing `parking` catalog ID launches this first variant; other maneuver IDs remain unavailable. `parking_view.gd` draws the actual transformed car footprint against the shared world-X/Z bay rectangle and gives position feedback without changing the player camera.
+
+Parking scenario/assessment version 1 uses a deliberately wide 9 m deep × 6 m wide training bay, not a legal stall specification. Completion requires a reverse-distance-backed turn, alignment within 8° facing out, all four transformed footprint corners inside (1.4 m half-width including mirror clearance, 2.08 m half-length), an upright body, speed below 0.12 m/s with brake and clutch, then neutral/handbrake with the foot brake released for two continuous seconds. Releasing the handbrake, moving, leaving the bay or pausing cannot complete the hold. Its speed toast begins above 10 km/h and rearms below 6 km/h; these are practice reminders, not legal limits. Contacts are deduplicated per cone over three seconds. Restart rebuilds the sedan and restores cone transforms/velocities. Overshooting offers restart; forward correction and approach teaching remain outside this first variant. No attention or mirror observation is inferred from inputs. Results retain stable step IDs, shift/stall counts and cone/speed events in the existing five-attempt store.
 
 ## Current ownership
 
@@ -89,7 +97,7 @@ Input and transmission are small scripts owned by the vehicle, with focused chec
 
 ## Small integration contracts
 
-**Catalog:** preserve the existing `get_courses()`, `get_course(id)`, and `get_lesson(course_id, lesson_id)` interface. `scene_path` is set for Primary Controls and Open World. The app validates that path before enabling Start. User-visible titles may change without changing IDs.
+**Catalog:** preserve the existing `get_courses()`, `get_course(id)`, and `get_lesson(course_id, lesson_id)` interface. `scene_path` is set for Primary Controls, guided Parking and Open World. The app validates that path before enabling Start. User-visible titles may change without changing IDs.
 
 **Session lifecycle:** App loads the selected scene, calls `start_attempt(context)`, and connects `attempt_finished(result)` and `exit_requested`. Context starts with `course_id`, `lesson_id`, `vehicle_id`, and `input_profile_id`. Add scenario and assessment versions when saving begins. Restart resets all owned nodes or reconstructs the session; it never reuses the previous event list. App frees the session and releases captured mouse input before showing menus.
 
@@ -118,7 +126,7 @@ The cockpit must support the driver's actual eye position, clear windshield sigh
 
 - Godot loads the configured main scene without script/scene errors.
 - The four course groups and all nine maneuver entries are reachable.
-- Primary Controls enters a first-person sedan session with a complete eight-step control sequence and feedback. Open World supports free exploration, an optional venue badge and session review; the other briefings show unavailable gameplay.
+- Primary Controls enters a first-person sedan session with a complete eight-step control sequence and feedback. Open World supports free exploration, an optional venue badge and session review; guided backing Parking also completes its own review; the other briefings show unavailable gameplay.
 - Escape pauses the exported course, and the session can restart or return to courses.
 - Scripted Godot checks cover transmission, attempt storage, and the full lesson flow. The macOS export launches and its first-person view was visually checked.
 - Physical controller testing, exported-app save/relaunch, and a manually driven end-to-end export check remain outstanding. Secondary Controls is the next course.

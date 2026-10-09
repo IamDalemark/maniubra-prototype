@@ -23,7 +23,7 @@ const COURSES = [
 		"title": "3. Maneuvers",
 		"description": "Choose one maneuver for focused practice.",
 		"lessons": [
-			{"id": "parking", "title": "Parking", "objective": "Position and secure the vehicle in a permitted space with suitable clearance and heading."},
+			{"id": "parking", "title": "Parking — Backing with Guide", "objective": "Reverse into a marked bay, straighten, stop fully inside, and secure the car.", "briefing": "Start beside the wide yellow bay. Follow the centered goal, reason and one action at a time. Check your mirrors and surroundings before backing; the small bay view helps you judge position. Move at walking pace, turn right in reverse, straighten, stop fully inside, then select neutral and hold the handbrake for two seconds. This is guided practice, not a timed test.", "scene_path": "res://scenes/lessons/backing_parking.tscn"},
 			{"id": "reversing", "title": "Reversing", "objective": "Observe the surroundings and reverse with controlled speed and positioning."},
 			{"id": "left_turn", "title": "Left Turn", "objective": "Select the appropriate lane, signal, yield, and make a permitted left turn."},
 			{"id": "right_turn", "title": "Right Turn", "objective": "Observe signals and restrictions, check the surroundings, and make a permitted right turn."},
