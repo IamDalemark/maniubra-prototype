@@ -13,6 +13,7 @@ func _ready() -> void:
 		"palm": _palm()
 		"jeepney": _jeepney()
 		"tricycle": _tricycle()
+		"motorcycle": _motorcycle()
 		_: push_error("Unknown city prop: " + kind)
 
 
@@ -168,6 +169,47 @@ func _tricycle() -> void:
 	side_wheel.rotation.z = PI / 2.0
 	_sphere(Vector3(0.18, 0.18, 0.12), Vector3(0.52, 0.91, 1.06), Color("ffe6ab"), 0.2, true)
 	_text("TRICYCLE", Vector3(-0.47, 1.63, 0.87), 26, Color("173b43"))
+
+
+func _motorcycle() -> void:
+	var paint: Color = [Color("bd5141"), Color("376f9b")][palette_index % 2]
+	var metal := Color("9da8a9")
+	var dark := Color("252e32")
+	_box(Vector3(0.28, 0.16, 1.26), Vector3(0, 0.55, 0), metal, 0.35)
+	_box(Vector3(0.40, 0.32, 0.48), Vector3(0, 0.74, 0.26), paint, 0.5)
+	_box(Vector3(0.40, 0.13, 0.85), Vector3(0, 0.95, -0.30), dark)
+	_box(Vector3(0.34, 0.23, 0.40), Vector3(0, 0.69, -0.76), paint)
+	for z in [-0.76, 0.82]:
+		var tire := _cylinder(0.31, 0.13, Vector3(0, 0.32, z), dark)
+		tire.rotation.z = PI * 0.5
+		var hub := _cylinder(0.19, 0.15, Vector3(0, 0.32, z), metal, 0.35)
+		hub.rotation.z = PI * 0.5
+	for side in [-1.0, 1.0]:
+		var fork := _box(Vector3(0.055, 0.67, 0.06), Vector3(side * 0.10, 0.62, 0.68), metal)
+		fork.rotation.x = -0.22
+		_box(Vector3(0.10, 0.08, 0.30), Vector3(side * 0.31, 0.48, -0.18), dark)
+	_box(Vector3(0.67, 0.06, 0.08), Vector3(0, 1.15, 0.57), dark)
+	_box(Vector3(0.34, 0.28, 0.15), Vector3(0, 1.0, 0.88), paint)
+	_sphere(Vector3(0.25, 0.23, 0.08), Vector3(0, 1.02, 0.97), Color("fff4c7"), 0.25, true)
+	_box(Vector3(0.20, 0.11, 0.04), Vector3(0, 0.72, -0.99), Color("de6752"), 0.3, true)
+	# A helmeted rider with bent arms and legs gives a readable road-user silhouette.
+	var torso := _box(Vector3(0.44, 0.52, 0.29), Vector3(0, 1.28, -0.12), Color("374854"))
+	torso.rotation.x = 0.22
+	_sphere(Vector3(0.47, 0.49, 0.46), Vector3(0, 1.72, 0.01), paint)
+	_box(Vector3(0.39, 0.14, 0.055), Vector3(0, 1.74, 0.23), Color("253b45"), 0.2)
+	for side in [-1.0, 1.0]:
+		var upper_arm := _box(Vector3(0.13, 0.35, 0.14), Vector3(side * 0.27, 1.30, 0.18), Color("374854"))
+		upper_arm.rotation.x = -0.75
+		var forearm := _box(Vector3(0.12, 0.31, 0.13), Vector3(side * 0.28, 1.16, 0.41), Color("b68c69"))
+		forearm.rotation.x = -1.1
+		_box(Vector3(0.14, 0.09, 0.12), Vector3(side * 0.29, 1.16, 0.58), dark)
+		var thigh := _box(Vector3(0.16, 0.42, 0.19), Vector3(side * 0.23, 0.95, -0.20), Color("466174"))
+		thigh.rotation.x = -0.75
+		var shin := _box(Vector3(0.15, 0.36, 0.17), Vector3(side * 0.26, 0.62, -0.05), Color("466174"))
+		shin.rotation.x = 0.2
+		_box(Vector3(0.18, 0.10, 0.30), Vector3(side * 0.28, 0.48, 0.05), dark)
+		_box(Vector3(0.025, 0.30, 0.025), Vector3(side * 0.29, 1.31, 0.62), metal)
+		_box(Vector3(0.18, 0.12, 0.035), Vector3(side * 0.29, 1.48, 0.62), dark)
 
 
 func _box(size: Vector3, at: Vector3, color: Color, roughness := 0.75, glow := false) -> MeshInstance3D:

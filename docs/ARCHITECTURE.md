@@ -1,6 +1,6 @@
 # Minimal architecture
 
-Status: Primary Controls and an early playable Open World session. The latter uses procedural district geometry, scripted traffic and pedestrians, a destination badge, and a small set of contact/stop-line incident checks. General rule evaluators and mature hazard orchestration remain design boundaries.
+Status: Primary Controls and two playable Open World maps (the Iloilo district and compact market scenario). The latter uses procedural district geometry, scripted traffic and pedestrians, a destination badge, and a small set of contact/stop-line incident checks. General rule evaluators and mature hazard orchestration remain design boundaries.
 
 Open World pedestrians have seeded run-across and turn-back variants at the two existing crossing sites. A turn-back begins after the person visibly enters the road, pauses briefly, then returns along the same bounded path. Reaching the curb changes the actor to a short sidewalk roaming path with seeded walking speeds, occasional running, and direction changes; it never restarts that crossing. Two other ambient sidewalk walkers occasionally run or reverse. The lesson records the crossing and turn-back as separate observed events; contact still uses the existing collision/fall path. `tests/pedestrian_behavior.gd` checks reproducible choices, response distance, road and sidewalk bounds, continuous post-return movement, and event counts.
 
@@ -8,13 +8,13 @@ A third, ordinary crossing actor is paired with the market street's zebra paint.
 
 ## Implemented files
 
-The second Open World lesson, `trailer_market`, uses `trailer_scenario.gd` as a small subclass of the existing session. Exported scene properties select its map, heading, map ID and absence of a destination. It reuses pause/restart, input, collision toasts and result persistence. `trailer_market.gd` owns its road loop, lane paths, stalls and streetscape; `market_pedestrian.gd` adds counter dwell/departure to the existing walker. The crowded slice has twelve vendors, twelve shoppers, four other pedestrians and ten road vehicles. The counterflow motorcycle encounter is the next dependent implementation step.
+The second Open World lesson, `trailer_market`, uses `trailer_scenario.gd` as a small subclass of the existing session. Exported scene properties select its map, heading, map ID and absence of a destination. It reuses pause/restart, input, collision toasts and result persistence. `trailer_market.gd` owns its road loop, lane paths, stalls and streetscape; `market_pedestrian.gd` adds counter dwell/departure to the existing walker. The crowded slice has twelve vendors, twelve shoppers, four other pedestrians and ten jeepney/tricycle/car actors plus two helmeted motorcycles. `approaching_motorcycle.gd` extends the lane follower with waiting, merging, approach and circulation states. The market session owns lane/direction detection, distance/merge gating and event deduplication. Restart reconstructs the map to restore physical cones.
 
 ```text
 project.godot                 Main scene, desktop window, existing renderer/physics
 scenes/app.tscn               Root Control scene
 scripts/app.gd               Main menu → courses → lessons → briefing → back
-scripts/course_catalog.gd    Four courses and twelve stable lesson records
+scripts/course_catalog.gd    Four courses and thirteen stable lesson records
 scenes/lessons/primary_controls.tscn   First playable driving session
 scripts/primary_controls.gd            Yard, guided steps, HUD, result events
 scenes/lessons/open_world.tscn           Connected free-driving session
@@ -40,6 +40,9 @@ tests/core_logic.gd                    Transmission and persistence checks
 tests/primary_controls_flow.gd         Scripted complete-lesson check
 tests/open_world_flow.gd                 Destination, incident, stop-line and review checks
 tests/open_world_collision.gd            Physical pedestrian/traffic contact check
+tests/trailer_scenario_flow.gd           Market launch, shopping, review and retry
+tests/trailer_counterflow.gd             Direction/gating, rider motion, pause and restart
+tests/trailer_map_drive.gd               Sedan physics drive around market loop
 tests/vehicle_stability.gd             Flat-road cornering and rollover check
 tests/audio_playback.gd                Ignition/audio loop and volume-setting check
 tests/training_lot.gd                  Enclosure and obstacle checks
@@ -52,7 +55,7 @@ docs/AGENT_IMPLEMENTATION.md Ordered implementation handoff
 AGENTS.md                    Repository rules
 ```
 
-`app.gd` owns the menu controls and current navigation state. `course_catalog.gd` contains curriculum data only and returns copies of its data. Course IDs are `primary_controls`, `secondary_controls`, `maneuvers`, and `open_world`. The catalog holds one initial combined lesson for each controls course, nine maneuver lessons, and one open-world lesson.
+`app.gd` owns the menu controls and current navigation state. `course_catalog.gd` contains curriculum data only and returns copies of its data. Course IDs are `primary_controls`, `secondary_controls`, `maneuvers`, and `open_world`. The catalog holds one initial combined lesson for each controls course, nine maneuver lessons, and two open-world lessons.
 
 Primary Controls and Open World have real scene paths and are selectable. The remaining briefings accurately show unavailable lessons. `app.gd` owns image-card selection, session creation/removal, a timestamped result timeline, saved results, and retry; `primary_controls.gd` owns its exercise, feedback, upper-left driver check, and upper-right error toast. Rejected shifts, stalls, and blocked ignition show a timed corrective toast while their events remain in attempt history. Open World also records pedestrian, vehicle and stall contacts, plus rolling through its one marked stop line, and shows corrective toasts. The driver check reads sedan seatbelt state and handbrake input; its seatbelt button calls the same toggle as the B key. The seatbelt currently affects presentation only. There is no numeric pass/fail score. UI controls are built in scripts to keep the prototype small; extract dedicated scenes only when presentation work makes that useful.
 

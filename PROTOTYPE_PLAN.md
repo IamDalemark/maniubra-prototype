@@ -8,7 +8,7 @@ Implementation update: the four-course menu launches an eight-step first-person 
 
 ## Goal and scope
 
-10 October 2026: the user's additional small Trailer Scenario is tracked in [the market scenario plan](docs/TRAILER_SCENARIO.md). It is a second map under Open World, with a crowded Filipino palengke, stalls encroaching into two lanes, shoppers visiting vendors, local traffic, and an authored counterflow motorcycle encounter.
+10 October 2026: the user's additional small Trailer Scenario is tracked in [the market scenario plan](docs/TRAILER_SCENARIO.md). It is a second map under Open World, with a crowded Filipino palengke, stalls encroaching into two lanes, shoppers visiting vendors, local traffic, and an authored counterflow motorcycle encounter. This slice is implemented and exported; focused flow/encounter checks and a native scripted road-loop drive pass. Manual crowded-driving and performance tuning remain open.
 
 Build a single-player, first-person macOS desktop 3D driving practice application in Godot where learners select a course, operate a manual vehicle from the driver's seat, practice maneuvers, and ultimately anticipate randomized hazards in a Philippine open world. The user's deadline is ASAP; prioritize the first complete lesson over breadth in the initial delivery, with a presentable cockpit and coherent assets.
 

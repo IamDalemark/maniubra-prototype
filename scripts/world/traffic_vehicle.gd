@@ -3,12 +3,17 @@ extends CharacterBody3D
 
 const JEEPNEY = preload("res://scenes/props/jeepney.tscn")
 const TRICYCLE = preload("res://scenes/props/tricycle.tscn")
+const MOTORCYCLE = preload("res://scenes/props/motorcycle.tscn")
 
 var kind := "car"
+var palette_index := 0
 var points: PackedVector3Array
 var next_index := 0
 var player: Node3D
 var cruise_speed := 6.3
+var steering_response := 2.4
+var acceleration_response := 8.5
+var waypoint_radius := 2.1
 var stop_index := -1
 var stop_seconds := 0.0
 var _stop_remaining := 0.0
@@ -18,6 +23,8 @@ var _stopped_this_lap := false
 func _ready() -> void:
 	var shape := BoxShape3D.new()
 	shape.size = Vector3(2.2, 1.75, 5.9) if kind == "jeepney" else (Vector3(1.5, 1.65, 2.2) if kind == "tricycle" else Vector3(1.86, 1.50, 4.0))
+	if kind == "motorcycle":
+		shape.size = Vector3(0.66, 1.95, 2.12)
 	var collision := CollisionShape3D.new()
 	collision.shape = shape
 	collision.position.y = shape.size.y * 0.5
@@ -27,6 +34,10 @@ func _ready() -> void:
 			add_child(JEEPNEY.instantiate())
 		"tricycle":
 			add_child(TRICYCLE.instantiate())
+		"motorcycle":
+			var bike := MOTORCYCLE.instantiate()
+			bike.palette_index = palette_index
+			add_child(bike)
 		_:
 			_build_car()
 
@@ -41,7 +52,7 @@ func _physics_process(delta: float) -> void:
 	var target := points[next_index]
 	var to_target := target - global_position
 	to_target.y = 0.0
-	if to_target.length() < 2.1:
+	if to_target.length() < waypoint_radius:
 		var passed := next_index
 		next_index = (next_index + 1) % points.size()
 		if next_index == 0:
@@ -53,20 +64,20 @@ func _physics_process(delta: float) -> void:
 		to_target = target - global_position
 		to_target.y = 0.0
 	var wanted_yaw := atan2(to_target.x, to_target.z)
-	rotation.y = lerp_angle(rotation.y, wanted_yaw, minf(delta * 2.4, 1.0))
+	rotation.y = lerp_angle(rotation.y, wanted_yaw, minf(delta * steering_response, 1.0))
 	var front := Vector3(sin(rotation.y), 0.0, cos(rotation.y))
 	var desired_speed := cruise_speed
 	if _blocked_ahead(front):
 		desired_speed = 0.0
 	elif to_target.length() < 8.0:
 		desired_speed *= 0.62
-	velocity = velocity.move_toward(front * desired_speed, delta * 8.5)
+	velocity = velocity.move_toward(front * desired_speed, delta * acceleration_response)
 	move_and_slide()
 
 
 func _blocked_ahead(front: Vector3) -> bool:
 	var reach := 7.5 + velocity.length() * 0.75
-	var origin := global_position + Vector3(0, 1.1, 0) + front * 2.4
+	var origin := global_position + Vector3(0, 1.1, 0) + front * (1.15 if kind == "motorcycle" else 2.4)
 	var query := PhysicsRayQueryParameters3D.create(origin, origin + front * reach)
 	query.exclude = [get_rid()]
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
