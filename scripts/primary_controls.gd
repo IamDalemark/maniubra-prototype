@@ -12,21 +12,33 @@ const TRICYCLE_SCENE = preload("res://scenes/props/tricycle.tscn")
 const TRAFFIC_CONE_SCENE = preload("res://scenes/props/traffic_cone.tscn")
 const DrivingInput = preload("res://scripts/driving_input.gd")
 const SPAWN_POSITION := Vector3(-2.7, 0.02, -85.0)
-const STEP_TEXT = [
-	"Press {drive_ignition} to start the engine while the gearbox is in neutral.",
-	"Hold {drive_clutch} to depress the clutch, then press {drive_gear_up} to select first gear.",
-	"Release {drive_clutch}, hold {drive_throttle}, and travel forward past 8 km/h.",
-	"Depress {drive_clutch} and press {drive_gear_up} to shift into second gear.",
-	"Steer with {drive_left}/{drive_right} while moving to change your position in the lot.",
-	"Hold {drive_clutch} and brake with {drive_brake} until the sedan comes to a full stop.",
-	"Hold {drive_handbrake} to apply the handbrake while stopped.",
-	"Release {drive_handbrake}, hold {drive_clutch}, press {drive_gear_down} three times for reverse, then back up 3 m.",
+const LESSON_STEPS = [
+	{"id": "start_engine", "goal": "Start the engine", "why": "The engine supplies power to move the car."},
+	{"id": "select_first", "goal": "Get ready to move", "why": "The clutch disconnects engine power so you can select a gear."},
+	{"id": "move_forward", "goal": "Move forward slowly", "why": "The accelerator adds power. Releasing the clutch sends it to the wheels."},
+	{"id": "select_second", "goal": "Change to second gear", "why": "Second gear lets the engine turn more slowly as you gain speed."},
+	{"id": "steer", "goal": "Change your direction", "why": "Small steering movements help you keep control."},
+	{"id": "stop", "goal": "Bring the car to a stop", "why": "The brake slows the car. Holding the clutch down prevents a low-speed stall."},
+	{"id": "handbrake", "goal": "Hold the stopped car", "why": "The handbrake helps keep the car still when parked."},
+	{"id": "reverse", "goal": "Back up three metres", "why": "Reverse gear moves the car backward. Check behind you before moving."},
 ]
+const METRIC_STEPS := {"engine": 0, "rpm": 0, "seatbelt": 0, "clutch": 1, "gear": 1, "speed": 2, "brake": 5, "handbrake": 6}
+
 
 var sedan
-var _hud: Label
+var _hud: VBoxContainer
+var _metrics: Dictionary = {}
+var _metric_reveal_at: Dictionary = {}
+var _lesson_clock := 0.0
+var _guidance_panel: PanelContainer
+var _why: Label
+var _action: Label
+var _action_progress: Label
+var _control_caption: Label
+var _control_viewport: SubViewport
+var _control_camera: Camera3D
+var _focus_id := ""
 var _prompt: Label
-var _feedback: Label
 var _controls_hint: Label
 var _seatbelt_status: Label
 var _seatbelt_button: Button
@@ -68,6 +80,8 @@ func start_attempt(context: Dictionary) -> void:
 	_step = 0
 	_elapsed = 0.0
 	_events.clear()
+	_lesson_clock = 0.0
+	_metric_reveal_at.clear()
 	_last_notice = ""
 	_hide_error_toast()
 	_start_z = sedan.global_position.z
@@ -102,7 +116,7 @@ func _physics_process(delta: float) -> void:
 			if speed > 1.0 and absf(sedan.global_position.x - _steer_x) > 1.8:
 				_advance("You changed position while moving.")
 		5:
-			if sedan.controls.brake > 0.5 and sedan.controls.clutch > 0.65 and speed < 0.35:
+			if sedan.controls.brake > 0.5 and sedan.controls.clutch > 0.65 and speed < 0.12:
 				_advance("You brought the sedan to a full stop with the brake.")
 		6:
 			if sedan.controls.handbrake and speed < 0.35:
@@ -115,12 +129,18 @@ func _physics_process(delta: float) -> void:
 
 
 func _process(delta: float) -> void:
-	if not _started or _paused or _toast_remaining <= 0.0:
+	if not _started or _paused:
 		return
-	_toast_remaining = maxf(_toast_remaining - delta, 0.0)
-	_toast_panel.modulate.a = minf(_toast_remaining / 0.35, 1.0)
-	if _toast_remaining == 0.0:
-		_toast_panel.visible = false
+	_lesson_clock += delta
+	_update_metric_reveal()
+	if _toast_remaining > 0.0:
+		_toast_remaining = maxf(_toast_remaining - delta, 0.0)
+		_toast_panel.modulate.a = minf(_toast_remaining / 0.35, 1.0)
+		if _toast_remaining == 0.0:
+			_toast_panel.visible = false
+	# The close-up follows the car; the player's driving camera stays unchanged.
+	if _control_camera != null:
+		_update_control_camera()
 
 
 func _input(event: InputEvent) -> void:
@@ -135,10 +155,10 @@ func _input(event: InputEvent) -> void:
 
 
 func _advance(message: String) -> void:
-	_events.append({"type": "step_completed", "step": _step, "elapsed_seconds": snappedf(_elapsed, 0.01), "detail": message})
+	_events.append({"type": "step_completed", "step": _step, "step_id": LESSON_STEPS[_step].id, "elapsed_seconds": snappedf(_elapsed, 0.01), "detail": message})
 	_last_notice = message
 	_step += 1
-	if _step == STEP_TEXT.size():
+	if _step == LESSON_STEPS.size():
 		_finish()
 
 
@@ -189,15 +209,16 @@ func _hide_error_toast() -> void:
 func _finish() -> void:
 	_started = false
 	sedan.driving_enabled = false
+	sedan.set_lesson_focus([])
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var mistakes := 0
 	for event in _events:
 		if event["type"] == "shift_rejected":
 			mistakes += 1
 	var result := _context.duplicate(true)
-	result["scenario_version"] = 2
-	result["assessment_version"] = 2
-	result["step_count"] = STEP_TEXT.size()
+	result["scenario_version"] = 3
+	result["assessment_version"] = 3
+	result["step_count"] = LESSON_STEPS.size()
 	result["unix_time"] = Time.get_unix_time_from_system()
 	result["completed"] = true
 	result["elapsed_seconds"] = snappedf(_elapsed, 0.1)
@@ -250,24 +271,128 @@ func _update_ui() -> void:
 		return
 	var gear_name := "R" if sedan.gearbox.gear == -1 else ("N" if sedan.gearbox.gear == 0 else str(sedan.gearbox.gear))
 	var engine_status := "RUNNING" if sedan.gearbox.engine_running else ("STALLED" if sedan.gearbox.engine_stalled else "OFF")
-	_hud.text = "SPEED  %02d km/h     RPM  %04d     GEAR  %s     ENGINE  %s\nCLUTCH  %d%%     HANDBRAKE  %s     SEATBELT  %s" % [roundi(sedan.speed_mps() * 3.6), roundi(sedan.gearbox.engine_rpm), gear_name, engine_status, roundi(sedan.controls.clutch * 100), "ON" if sedan.controls.handbrake else "OFF", "ON" if sedan.seatbelt_fastened else "OFF"]
-	_prompt.text = "PRIMARY CONTROLS   •   %d / %d\n%s" % [mini(_step + 1, STEP_TEXT.size()), STEP_TEXT.size(), _step_prompt(mini(_step, STEP_TEXT.size() - 1))]
-	_feedback.text = _last_notice
-	_controls_hint.text = DrivingInput.controller_hint() if sedan.controls.last_device == "gamepad" else DrivingInput.keyboard_hint()
+	var values := {"speed": "%02d km/h" % roundi(sedan.speed_mps() * 3.6), "rpm": "%04d" % roundi(sedan.gearbox.engine_rpm), "gear": gear_name, "engine": engine_status, "clutch": "%d%%" % roundi(sedan.controls.clutch * 100), "brake": "%d%%" % roundi(sedan.controls.brake * 100), "handbrake": "ON" if sedan.controls.handbrake else "OFF", "seatbelt": "ON" if sedan.seatbelt_fastened else "OFF"}
+	var queued := 0
+	for id in METRIC_STEPS:
+		_metrics[id].text = id.to_upper() + "  " + values[id]
+		if METRIC_STEPS[id] <= _step and not _metric_reveal_at.has(id):
+			_metric_reveal_at[id] = _lesson_clock + queued * 0.32
+			queued += 1
+	_update_metric_reveal()
+	_update_guidance()
+	_controls_hint.text = "%s pause  •  %s restart" % [DrivingInput.display_name("drive_pause", sedan.controls.last_device), DrivingInput.display_name("drive_reset", sedan.controls.last_device)]
 	_seatbelt_status.text = "SEATBELT  •  FASTENED" if sedan.seatbelt_fastened else "SEATBELT  •  UNFASTENED"
 	_seatbelt_status.add_theme_color_override("font_color", Color("a4dfbb") if sedan.seatbelt_fastened else Color("f5c568"))
 	var belt_key := DrivingInput.display_name("drive_seatbelt", sedan.controls.last_device)
 	_seatbelt_button.text = "Unfasten seatbelt  [%s]" % belt_key if sedan.seatbelt_fastened else "Fasten seatbelt  [%s]" % belt_key
+	_seatbelt_button.tooltip_text = "Press %s while driving, or click here while paused." % belt_key
 	_handbrake_status.text = "HANDBRAKE  •  APPLIED" if sedan.controls.handbrake else "HANDBRAKE  •  RELEASED"
 	_handbrake_status.add_theme_color_override("font_color", Color("f5c568") if sedan.controls.handbrake else Color("a4dfbb"))
 
 
-func _step_prompt(index: int) -> String:
-	var prompt: String = STEP_TEXT[index]
+func _bound_text(text: String) -> String:
 	for binding in DrivingInput.BINDINGS:
 		var action: String = binding["action"]
-		prompt = prompt.replace("{" + action + "}", DrivingInput.display_name(StringName(action), sedan.controls.last_device))
-	return prompt
+		text = text.replace("{" + action + "}", DrivingInput.display_name(StringName(action), sedan.controls.last_device))
+	return text
+
+
+func _teaching_action() -> Dictionary:
+	if sedan.gearbox.engine_stalled or (_step > 0 and not sedan.gearbox.engine_running):
+		if sedan.controls.clutch < 0.65:
+			return _instruction("Hold {drive_clutch} all the way down.", "clutch", 1, 2)
+		return _instruction("Keep holding the clutch. Press {drive_ignition} to restart.", "ignition", 2, 2)
+	match _step:
+		0:
+			if sedan.gearbox.gear != 0 and sedan.controls.clutch < 0.65:
+				return _instruction("Hold {drive_clutch} all the way down before starting.", "clutch", 1, 2)
+			return _instruction("Press {drive_ignition} once. Listen for the engine.", "ignition", 1, 1)
+		1, 3:
+			if sedan.controls.clutch < 0.65:
+				return _instruction("Hold {drive_clutch} all the way down.", "clutch", 1, 2)
+			var target_gear := 1 if _step == 1 else 2
+			var action := "drive_gear_down" if sedan.gearbox.gear > target_gear else "drive_gear_up"
+			return _instruction("Keep the clutch down. Press {" + action + "} once for gear %d." % target_gear, "gear", 2, 2)
+		2:
+			if sedan.controls.throttle < 0.25 and sedan.speed_mps() < 1.0:
+				return _instruction("Hold {drive_throttle} gently to add a little power.", "accelerator", 1, 3)
+			if sedan.controls.clutch > 0.2:
+				return _instruction("Keep the accelerator held. Release {drive_clutch} to move.", "clutch", 2, 3)
+			return _instruction("Keep moving forward until SPEED reaches 8 km/h.", "accelerator", 3, 3)
+		4:
+			return _instruction("Gently steer with {drive_left} / {drive_right} while moving.", "steering", 1, 1)
+		5:
+			if sedan.controls.throttle > 0.1:
+				return _instruction("Release {drive_throttle} to stop adding power.", "accelerator", 1, 3)
+			if sedan.controls.clutch < 0.65:
+				return _instruction("Hold {drive_clutch} all the way down.", "clutch", 2, 3)
+			return _instruction("Keep the clutch down. Hold {drive_brake} until SPEED is 0.", "brake", 3, 3)
+		6:
+			return _instruction("Stay stopped. Hold {drive_handbrake} to apply the handbrake.", "handbrake", 1, 1)
+		7:
+			if sedan.controls.handbrake:
+				return _instruction("Release {drive_handbrake} to lower the handbrake.", "handbrake", 1, 5)
+			if sedan.gearbox.gear != -1:
+				if sedan.controls.clutch < 0.65:
+					return _instruction("Hold {drive_clutch} all the way down.", "clutch", 2, 5)
+				var next_gear := "R" if sedan.gearbox.gear == 0 else ("N" if sedan.gearbox.gear == 1 else str(sedan.gearbox.gear - 1))
+				return _instruction("Keep the clutch down. Press {drive_gear_down} once for " + next_gear + ".", "gear", 3, 5)
+			if sedan.controls.brake > 0.1:
+				return _instruction("Release {drive_brake}. Check the mirrors and look behind.", "brake", 4, 5)
+			if sedan.controls.clutch > 0.2:
+				return _instruction("Hold {drive_throttle} gently, then release {drive_clutch}.", "clutch", 5, 5)
+			return _instruction("Hold {drive_throttle} gently. Back up three metres.", "accelerator", 5, 5)
+	return _instruction("Lesson complete.", "", 1, 1)
+
+
+func _instruction(text: String, focus: String, index: int, total: int) -> Dictionary:
+	return {"text": text, "focus": focus, "index": index, "total": total}
+
+
+func _update_guidance() -> void:
+	var step: Dictionary = LESSON_STEPS[mini(_step, LESSON_STEPS.size() - 1)]
+	var instruction := _teaching_action()
+	var recovering: bool = _step > 0 and not sedan.gearbox.engine_running
+	_prompt.text = "Restart the engine" if recovering else step.goal
+	_why.text = "WHY  " + ("The engine stopped. Hold the clutch down to restart without moving." if recovering else step.why)
+	_action_progress.text = "PRIMARY CONTROLS  %d / %d  •  ACTION %d / %d" % [mini(_step + 1, LESSON_STEPS.size()), LESSON_STEPS.size(), instruction.index, instruction.total]
+	_action.text = _bound_text(instruction.text)
+	var focus: String = instruction.focus
+	sedan.set_lesson_focus([focus] if _started and focus != "" else [])
+	_focus_id = focus
+	_control_caption.text = {"clutch": "CLUTCH • LEFT PEDAL", "brake": "BRAKE • MIDDLE PEDAL", "accelerator": "ACCELERATOR • RIGHT PEDAL", "gear": "GEAR LEVER", "handbrake": "HANDBRAKE", "steering": "STEERING WHEEL", "ignition": "ENGINE START"}.get(focus, "")
+	_control_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS if _started else SubViewport.UPDATE_DISABLED
+	_update_control_camera()
+
+
+func _update_control_camera() -> void:
+	if _control_camera == null:
+		return
+	var at := Vector3(0.42, 0.79, 0.18)
+	var target := Vector3(0.42, 0.52, 0.64)
+	match _focus_id:
+		"steering":
+			at = Vector3(0.40, 1.27, -0.63)
+			target = Vector3(0.40, 1.07, 0.10)
+		"gear":
+			at = Vector3(-0.09, 1.43, -0.43)
+			target = Vector3(-0.09, 1.19, -0.02)
+		"handbrake":
+			at = Vector3(0.08, 1.40, -0.32)
+			target = Vector3(0.08, 1.15, 0.07)
+		"ignition":
+			at = Vector3(0.19, 1.07, 0.14)
+			target = Vector3(0.19, 1.025, 0.23)
+	_control_camera.global_position = sedan.to_global(at)
+	_control_camera.look_at(sedan.to_global(target), sedan.global_basis.y)
+
+
+func _update_metric_reveal() -> void:
+	for id in _metrics:
+		var label: Label = _metrics[id]
+		var at: float = _metric_reveal_at.get(id, INF)
+		label.visible = _lesson_clock >= at
+		label.modulate.a = clampf((_lesson_clock - at) / 0.22, 0.0, 1.0)
 
 
 func _build_yard() -> void:
@@ -487,16 +612,24 @@ func _build_ui() -> void:
 	var layout := VBoxContainer.new()
 	layout.add_theme_constant_override("separation", 10)
 	margin.add_child(layout)
-	_prompt = _label(24, Color("f7f5e9"))
-	layout.add_child(_prompt)
-	_feedback = _label(17, Color("a4dfbb"))
-	layout.add_child(_feedback)
+	_build_guidance(layer)
 	_build_driver_check(layout)
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	layout.add_child(spacer)
-	_hud = _label(22, Color("f7f5e9"))
+	_hud = VBoxContainer.new()
+	_hud.add_theme_constant_override("separation", 5)
 	layout.add_child(_hud)
+	for ids in [["engine", "rpm", "seatbelt", "clutch"], ["gear", "speed", "brake", "handbrake"]]:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 24)
+		_hud.add_child(row)
+		for id in ids:
+			var metric := _label(19, Color("f7f5e9"))
+			metric.autowrap_mode = TextServer.AUTOWRAP_OFF
+			metric.visible = false
+			_metrics[id] = metric
+			row.add_child(metric)
 	_controls_hint = _label(15, Color("f2e5c7"))
 	layout.add_child(_controls_hint)
 	_build_error_toast(layer)
@@ -527,6 +660,67 @@ func _build_ui() -> void:
 	exit_button.text = "Exit to courses"
 	exit_button.pressed.connect(_exit)
 	buttons.add_child(exit_button)
+
+
+func _build_guidance(layer: CanvasLayer) -> void:
+	_guidance_panel = PanelContainer.new()
+	_guidance_panel.name = "BeginnerGuide"
+	_guidance_panel.anchor_left = 0.5
+	_guidance_panel.anchor_right = 0.5
+	_guidance_panel.offset_left = -280
+	_guidance_panel.offset_right = 280
+	_guidance_panel.offset_top = 12
+	_guidance_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.055, 0.10, 0.13, 0.96)
+	style.border_width_top = 3
+	style.border_color = Color("f5c568")
+	style.set_corner_radius_all(9)
+	style.content_margin_left = 15
+	style.content_margin_right = 15
+	style.content_margin_top = 12
+	style.content_margin_bottom = 12
+	_guidance_panel.add_theme_stylebox_override("panel", style)
+	layer.add_child(_guidance_panel)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	_guidance_panel.add_child(row)
+	var copy := VBoxContainer.new()
+	copy.custom_minimum_size.x = 350
+	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	copy.add_theme_constant_override("separation", 6)
+	row.add_child(copy)
+	_prompt = _label(24, Color("f5d479"))
+	copy.add_child(_prompt)
+	_why = _label(16, Color("c8d8dc"))
+	copy.add_child(_why)
+	_action_progress = _label(12, Color("97b2ba"))
+	copy.add_child(_action_progress)
+	_action = _label(21, Color("fff8e7"))
+	copy.add_child(_action)
+	var visual := VBoxContainer.new()
+	visual.custom_minimum_size.x = 160
+	row.add_child(visual)
+	_control_caption = _label(12, Color("f5d479"))
+	_control_caption.custom_minimum_size.y = 30
+	visual.add_child(_control_caption)
+	var image := TextureRect.new()
+	image.custom_minimum_size = Vector2(160, 112)
+	image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	visual.add_child(image)
+	_control_viewport = SubViewport.new()
+	_control_viewport.size = Vector2i(320, 224)
+	_control_viewport.world_3d = get_viewport().world_3d
+	_control_viewport.transparent_bg = true
+	add_child(_control_viewport)
+	_control_camera = Camera3D.new()
+	_control_camera.cull_mask = sedan.LESSON_CONTROL_LAYER
+	_control_camera.fov = 52
+	_control_camera.near = 0.025
+	_control_viewport.add_child(_control_camera)
+	_control_camera.current = true
+	image.texture = _control_viewport.get_texture()
 
 
 func _build_driver_check(layout: VBoxContainer) -> void:
@@ -574,8 +768,8 @@ func _build_error_toast(layer: CanvasLayer) -> void:
 	_toast_panel.anchor_right = 1.0
 	_toast_panel.offset_left = -390.0
 	_toast_panel.offset_right = -24.0
-	_toast_panel.offset_top = 24.0
-	_toast_panel.offset_bottom = 122.0
+	_toast_panel.offset_top = 236.0
+	_toast_panel.offset_bottom = 334.0
 	_toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_toast_panel.visible = false
 	var style := StyleBoxFlat.new()

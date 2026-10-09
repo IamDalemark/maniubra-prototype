@@ -59,6 +59,8 @@ AGENTS.md                    Repository rules
 
 Primary Controls and Open World have real scene paths and are selectable. The remaining briefings accurately show unavailable lessons. `app.gd` owns image-card selection, session creation/removal, a timestamped result timeline, saved results, and retry; `primary_controls.gd` owns its exercise, feedback, upper-left driver check, and upper-right error toast. Rejected shifts, stalls, and blocked ignition show a timed corrective toast while their events remain in attempt history. Open World also records pedestrian, vehicle and stall contacts, plus rolling through its one marked stop line, and shows corrective toasts. The driver check reads sedan seatbelt state and handbrake input; its seatbelt button calls the same toggle as the B key. The seatbelt currently affects presentation only. There is no numeric pass/fail score. UI controls are built in scripts to keep the prototype small; extract dedicated scenes only when presentation work makes that useful.
 
+Primary Controls owns its centered goal/reason/action panel and a small shared-world `SubViewport` close-up. Named lesson steps retain the eight existing exercise positions, with stable `step_id` values in completion events. The current action is derived from observed clutch, gear, throttle/brake and engine state. Metric labels are introduced by step, then revealed at 0.32-second intervals; the reveal clock freezes on pause and clears on restart. The sedan exposes `set_lesson_focus()` and original physical-control mesh groups, using a gold emissive overlay that restores base materials on focus changes. A reserved render layer isolates controls for the close-up; the main camera remains first person. No highlighting is enabled by Open World. `tests/beginner_guidance.gd` checks cue progression, device labels, recovery, reveal and reset. Stop completion now requires less than 0.12 m/s, which rounds to 0 km/h in the HUD; assessment version 3 identifies this change.
+
 ## Current ownership
 
 ```text
@@ -97,7 +99,7 @@ Input and transmission are small scripts owned by the vehicle, with focused chec
 
 **Attempt event:** current events contain `type`, `elapsed_seconds`, and observed detail such as a completed step or rejected shift. The attempt clock stops while paused. Add criterion IDs when later criteria are implemented. Do not label raw input as successful maneuver execution.
 
-**Result:** course/lesson IDs, completion state, observed events, and plain-language feedback. Primary Controls records scenario and assessment version 2, elapsed time, rejected shifts, and engine stall count. Add score deductions only after their criteria are defined and verified.
+**Result:** course/lesson IDs, completion state, observed events, and plain-language feedback. Primary Controls records scenario and assessment version 3, elapsed time, rejected shifts, and engine stall count. Add score deductions only after their criteria are defined and verified.
 
 ## Later additions, when their course needs them
 

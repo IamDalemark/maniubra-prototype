@@ -10,6 +10,13 @@ signal seatbelt_changed(fastened: bool)
 const DrivingInput = preload("res://scripts/driving_input.gd")
 const ManualTransmission = preload("res://scripts/manual_transmission.gd")
 
+const LESSON_CONTROL_LAYER := 1 << 19
+var _lesson_controls: Dictionary = {}
+var _lesson_focus: Array = []
+var _lesson_glow: StandardMaterial3D
+var _lesson_glow_time := 0.0
+var _pedals: Dictionary = {}
+
 var controls = DrivingInput.new()
 var gearbox = ManualTransmission.new()
 var driving_enabled := true
@@ -58,6 +65,12 @@ func _process(delta: float) -> void:
 	# VehicleBody3D advances after physics callbacks. Follow its final transform
 	# just before rendering so the cockpit and eye remain in the same frame.
 	_update_camera()
+	if not _lesson_focus.is_empty():
+		_lesson_glow_time += delta
+		_lesson_glow.emission_energy_multiplier = 0.65 + 0.25 * sin(_lesson_glow_time * 3.0)
+	for id in _pedals:
+		var amount: float = controls.clutch if id == "clutch" else (controls.brake if id == "brake" else controls.throttle)
+		_pedals[id].rotation.x = -amount * 0.20
 	_rear_camera.global_transform = global_transform * Transform3D(Basis.IDENTITY, Vector3(0, 1.76, -0.92))
 	for index in _side_cameras.size():
 		var side: float = -1.0 if index == 0 else 1.0
@@ -284,8 +297,13 @@ func _build_cockpit() -> void:
 	for x in [-0.36, 0.43]:
 		_box(self, Vector3(0.44, 0.12, 0.52), Vector3(x, 0.69, -0.68), Color("74665a"), 0.88)
 		_box(self, Vector3(0.44, 0.72, 0.16), Vector3(x, 1.04, -0.99), Color("74665a"), 0.88)
-	for x in [0.19, 0.41, 0.65]:
-		_box(self, Vector3(0.10, 0.16, 0.03), Vector3(x, 0.52, 0.64), Color("9ca8a5"), 0.65)
+	for pedal in [{"id": "accelerator", "x": 0.19}, {"id": "brake", "x": 0.41}, {"id": "clutch", "x": 0.65}]:
+		var mesh := _box(self, Vector3(0.10, 0.16, 0.03), Vector3(pedal.x, 0.52, 0.64), Color("6e7b7d"), 0.65)
+		mesh.name = "Pedal_" + pedal.id
+		_pedals[pedal.id] = mesh
+		for rib in 4:
+			_box(mesh, Vector3(0.087, 0.007, 0.008), Vector3(0, -0.058 + rib * 0.038, -0.019), Color("c4cfcb"), 0.5)
+		_register_lesson_control(pedal.id, mesh)
 	_steering_visual = _box(self, Vector3(0.42, 0.055, 0.08), Vector3(0.40, 1.07, 0.10), Color("171c1e"), 0.8)
 	_box(_steering_visual, Vector3(0.065, 0.42, 0.08), Vector3.ZERO, Color("171c1e"), 0.8)
 	var ring := TorusMesh.new()
@@ -317,6 +335,15 @@ func _build_cockpit() -> void:
 	_box(_handbrake_lever, Vector3(0.03, 0.03, 0.21), Vector3(0, 0.025, -0.09), Color("a9b4af"), 0.36)
 	_box(_handbrake_lever, Vector3(0.05, 0.045, 0.11), Vector3(0, 0.025, -0.19), Color("172124"), 0.82)
 	_box(_handbrake_lever, Vector3(0.045, 0.025, 0.025), Vector3(0, 0.050, -0.25), Color("d8a545"), 0.48)
+	_register_lesson_control("steering", _steering_visual)
+	_register_lesson_control("gear", _lever)
+	_register_lesson_control("handbrake", _handbrake_lever)
+	_gear_display.layers |= LESSON_CONTROL_LAYER
+	# An original ignition button gives the first instruction a physical target.
+	var ignition := _box(self, Vector3(0.08, 0.08, 0.035), Vector3(0.19, 1.025, 0.23), Color("acbdb7"), 0.35)
+	var key := _box(ignition, Vector3(0.043, 0.035, 0.02), Vector3(0, 0, -0.025), Color("273339"), 0.7)
+	key.name = "IgnitionButton"
+	_register_lesson_control("ignition", ignition)
 	_build_hands()
 	for x in [-0.44, 0.44]:
 		_box(self, Vector3(0.51, 0.035, 0.28), Vector3(x, 1.88, 0.31), Color("454b4a"), 0.9)
@@ -332,6 +359,35 @@ func _build_cockpit() -> void:
 	camera.current = true
 	for x in [-1.07, 1.07]:
 		_box(self, Vector3(0.26, 0.12, 0.13), Vector3(x, 1.12, 0.68), Color("252c2e"), 0.5)
+
+
+func _register_lesson_control(id: String, node: Node3D) -> void:
+	if not _lesson_controls.has(id):
+		_lesson_controls[id] = []
+	if node is MeshInstance3D:
+		node.layers |= LESSON_CONTROL_LAYER
+		if not _lesson_controls[id].has(node):
+			_lesson_controls[id].append(node)
+	for child in node.get_children():
+		if child is Node3D:
+			_register_lesson_control(id, child)
+
+
+func set_lesson_focus(ids: Array) -> void:
+	# Only an active lesson opts in. Shared Open World cars retain their materials.
+	if ids == _lesson_focus:
+		return
+	if _lesson_glow == null:
+		_lesson_glow = StandardMaterial3D.new()
+		_lesson_glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_lesson_glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_lesson_glow.albedo_color = Color(1.0, 0.73, 0.22, 0.40)
+		_lesson_glow.emission_enabled = true
+		_lesson_glow.emission = Color("ffba45")
+	for id in _lesson_controls:
+		for mesh in _lesson_controls[id]:
+			mesh.material_overlay = _lesson_glow if ids.has(id) else null
+	_lesson_focus = ids.duplicate()
 
 
 func _update_camera() -> void:
