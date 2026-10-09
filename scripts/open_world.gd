@@ -11,6 +11,12 @@ const PEDESTRIAN = preload("res://scripts/world/pedestrian.gd")
 const DrivingInput = preload("res://scripts/driving_input.gd")
 const VENUE_NAME := "Molo Plaza"
 
+@export var district_scene: PackedScene = DISTRICT
+@export var has_destination := true
+@export var session_title := "Open World"
+@export var map_id := "iloilo_district"
+@export var exploration_feedback := "Explored Iloilo-inspired streets."
+
 var district
 var sedan
 var _started := false
@@ -38,7 +44,7 @@ var _pause_buttons: VBoxContainer
 
 
 func _ready() -> void:
-	district = DISTRICT.instantiate()
+	district = district_scene.instantiate()
 	add_child(district)
 	_spawn_sedan()
 	_build_ui()
@@ -63,7 +69,7 @@ func start_attempt(context: Dictionary) -> void:
 	_last_sedan_pos = sedan.global_position
 	_stop_satisfied = false
 	_last_contact_at.clear()
-	_venue.text = "OPTIONAL DESTINATION\n" + VENUE_NAME
+	_venue.text = "OPTIONAL DESTINATION\n" + VENUE_NAME if has_destination else session_title
 	sedan.camera.fov = clampf(float(context.get("camera_fov", 75.0)), 60.0, 95.0)
 	sedan.set_audio_level(float(context.get("audio_level", 0.8)))
 	sedan.driving_enabled = true
@@ -78,7 +84,7 @@ func _physics_process(delta: float) -> void:
 	_elapsed += delta
 	_evaluate_market_stop(_last_sedan_pos, sedan.global_position, sedan.speed_mps())
 	_last_sedan_pos = sedan.global_position
-	if not _venue_reached:
+	if has_destination and not _venue_reached:
 		if district.destination_contains_vehicle(sedan) and sedan.speed_mps() < 0.5 / 3.6:
 			_arrival_hold += delta
 			if _arrival_hold >= 2.0:
@@ -204,7 +210,9 @@ func _end_drive() -> void:
 	result["unix_time"] = Time.get_unix_time_from_system()
 	result["completed"] = true
 	result["elapsed_seconds"] = snappedf(_elapsed, 0.1)
-	result["destination_venue"] = VENUE_NAME
+	result["map_id"] = map_id
+	result["has_destination"] = has_destination
+	result["destination_venue"] = VENUE_NAME if has_destination else ""
 	result["destination_reached"] = _venue_reached
 	result["badge_id"] = "molo_explorer" if _venue_reached else ""
 	result["step_count"] = 0
@@ -212,7 +220,9 @@ func _end_drive() -> void:
 	result["stall_count"] = _events.filter(func(event): return event.get("type") == "engine_stalled").size()
 	result["input_profile_id"] = sedan.controls.last_device
 	result["events"] = _events.duplicate(true)
-	result["feedback"] = "Explored Iloilo-inspired streets." + (" Molo Explorer badge earned." if _venue_reached else " Molo Plaza remained an optional destination.")
+	result["feedback"] = exploration_feedback
+	if has_destination:
+		result["feedback"] += " Molo Explorer badge earned." if _venue_reached else " Molo Plaza remained an optional destination."
 	attempt_finished.emit(result)
 
 
@@ -421,7 +431,7 @@ func _build_ui() -> void:
 	_pause_buttons.add_theme_constant_override("separation", 8)
 	panel.add_child(_pause_buttons)
 	var title := _label(25, Color.WHITE)
-	title.text = "Open World paused"
+	title.text = session_title + " paused"
 	_pause_buttons.add_child(title)
 	var resume := Button.new()
 	resume.name = "Resume"

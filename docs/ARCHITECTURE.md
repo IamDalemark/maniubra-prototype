@@ -8,6 +8,8 @@ A third, ordinary crossing actor is paired with the market street's zebra paint.
 
 ## Implemented files
 
+The second Open World lesson, `trailer_market`, uses `trailer_scenario.gd` as a small subclass of the existing session. Exported scene properties select its map, heading, map ID and absence of a destination. It reuses pause/restart, input, collision toasts and result persistence. `trailer_market.gd` owns its road loop, lane paths, stalls and streetscape; `market_pedestrian.gd` adds counter dwell/departure to the existing walker. The crowded slice has twelve vendors, twelve shoppers, four other pedestrians and ten road vehicles. The counterflow motorcycle encounter is the next dependent implementation step.
+
 ```text
 project.godot                 Main scene, desktop window, existing renderer/physics
 scenes/app.tscn               Root Control scene

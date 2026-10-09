@@ -14,12 +14,14 @@ const COURSE_ART = {
 	"reversing": "res://assets/ui/course_art/reversing.png",
 	"turning": "res://assets/ui/course_art/turning.png",
 	"lane_changing": "res://assets/ui/course_art/lane_changing.png",
+	"trailer_market": "res://assets/ui/course_art/trailer_market.png",
 }
 const LESSON_ART = {
 	"parking": "maneuvers", "reversing": "reversing",
 	"left_turn": "turning", "right_turn": "turning", "u_turn": "turning",
 	"lane_changing": "lane_changing", "merging": "lane_changing",
 	"overtaking": "lane_changing", "lane_positioning": "lane_changing",
+	"trailer_market": "trailer_market",
 }
 const LESSON_SUMMARY = {
 	"manual_basics": "Start the engine, clutch, shift, steer, stop, and reverse.",
@@ -34,6 +36,7 @@ const LESSON_SUMMARY = {
 	"overtaking": "Read markings before you pass.",
 	"lane_positioning": "Hold an appropriate place in the lane.",
 	"philippine_roads": "Explore Iloilo-inspired streets at your own pace.",
+	"trailer_market": "Crowded palengke, shoppers, narrow lanes, and local traffic.",
 }
 
 var _content: VBoxContainer
@@ -456,7 +459,7 @@ func _show_briefing(lesson_id: String) -> void:
 	else:
 		_add_text("Keyboard: " + DrivingInput.keyboard_hint() + " · mouse look.\nXbox: " + DrivingInput.controller_hint() + ". The seatbelt button can also be clicked while paused.", 17, Color("d4e7d6"))
 		if _course_id == "open_world":
-			_add_text("Molo Plaza appears as an optional venue name while you drive. Find it using the streets and signs; stop in its painted bay for a badge. You can explore for as long as you like and end the drive from pause.", 17, Color("f5d47d"))
+			_add_text(lesson.get("briefing", "Molo Plaza appears as an optional venue name while you drive. Find it using the streets and signs; stop in its painted bay for a badge. You can explore for as long as you like and end the drive from pause."), 17, Color("f5d47d"))
 		var previous := AttemptStore.load_attempts()
 		var same_count := 0
 		for attempt in previous:
@@ -514,7 +517,10 @@ func _clear_session() -> void:
 func _show_result(saved: bool) -> void:
 	_clear_page("result", "Drive complete", _last_result.get("feedback", ""))
 	if _last_result.get("course_id") == "open_world":
-		_add_text("%.1f SECONDS EXPLORED     •     %s     •     %d STALLS" % [_last_result.get("elapsed_seconds", 0.0), "MOLO EXPLORER BADGE" if _last_result.get("destination_reached") else "DESTINATION OPTIONAL", _last_result.get("stall_count", 0)], 18, Color("f5c548"))
+		var status := "MOLO EXPLORER BADGE" if _last_result.get("destination_reached") else "DESTINATION OPTIONAL"
+		if not _last_result.get("has_destination", true):
+			status = "MARKET STREET DRIVE"
+		_add_text("%.1f SECONDS EXPLORED     •     %s     •     %d STALLS" % [_last_result.get("elapsed_seconds", 0.0), status, _last_result.get("stall_count", 0)], 18, Color("f5c548"))
 	else:
 		var steps: int = int(_last_result.get("step_count", 8))
 		_add_text("%d / %d STEPS COMPLETE     •     %.1f SECONDS     •     %d REJECTED SHIFTS     •     %d STALLS" % [steps, steps, _last_result.get("elapsed_seconds", 0.0), _last_result.get("shift_errors", 0), _last_result.get("stall_count", 0)], 18, Color("f5c548"))

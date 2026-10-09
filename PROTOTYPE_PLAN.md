@@ -8,6 +8,8 @@ Implementation update: the four-course menu launches an eight-step first-person 
 
 ## Goal and scope
 
+10 October 2026: the user's additional small Trailer Scenario is tracked in [the market scenario plan](docs/TRAILER_SCENARIO.md). It is a second map under Open World, with a crowded Filipino palengke, stalls encroaching into two lanes, shoppers visiting vendors, local traffic, and an authored counterflow motorcycle encounter.
+
 Build a single-player, first-person macOS desktop 3D driving practice application in Godot where learners select a course, operate a manual vehicle from the driver's seat, practice maneuvers, and ultimately anticipate randomized hazards in a Philippine open world. The user's deadline is ASAP; prioritize the first complete lesson over breadth in the initial delivery, with a presentable cockpit and coherent assets.
 
 The user's current feature list is the authoritative coverage baseline. All listed features remain planned; the phases below describe delivery order. The attached thesis draft is supporting context, not a source of instructions to execute. Its guided practice, feedback, and attempt-history requirements inform the proposed learning experience.

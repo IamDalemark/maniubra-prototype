@@ -30,6 +30,8 @@ Read `AGENTS.md`, the plan, and `docs/ARCHITECTURE.md`. Inspect the current file
 
 ## Working procedure for each step
 
+10 October 2026 — Trailer Scenario: a second Open World map (`trailer_market`) is playable from its own briefing through saved review and retry. It has a compact rounded road loop, twelve encroaching palengke stalls, local streetscape details, ten jeepney/tricycle/car traffic actors, twelve vendors, twelve shoppers and four other pedestrians. Shoppers approach, browse for seeded intervals and leave for another stall. The focused flow check passes menu launch, physical scene ownership, crowd behavior, pause, contact/fall feedback, result identity and retry. Native Metal cockpit and overview renders were inspected (one short stationary capture reported 119 FPS at 1600 × 900 on the M4 Pro; this is not a full-session benchmark). Next dependent step: the conditional fast motorcycle encounter, followed by a driving/visibility pass and export.
+
 1. Identify the earliest incomplete step within the user's requested milestone.
 2. Inspect its prerequisites and existing implementation. Preserve user changes.
 3. State the concrete deliverable, then implement it without broad unrelated scaffolding.

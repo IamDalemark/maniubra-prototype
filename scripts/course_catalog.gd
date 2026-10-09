@@ -40,6 +40,7 @@ const COURSES = [
 		"description": "Apply the lessons in a connected district with varied road situations.",
 		"lessons": [
 			{"id": "philippine_roads", "title": "Explore Iloilo", "objective": "Drive freely through Iloilo-inspired streets. Molo Plaza is an optional destination; stopping there earns a badge.", "scene_path": "res://scenes/lessons/open_world.tscn"},
+			{"id": "trailer_market", "title": "Trailer Scenario — Palengke", "objective": "Drive through a compact, crowded Filipino market. Watch for shoppers, stalls narrowing both lanes, jeepneys, tricycles, and approaching motorcycles when counterflowing.", "briefing": "Explore the market loop at your own pace. Stalls take part of the lane, shoppers visit vendors, and jeepneys and tricycles make stops. Keep to your side of the road; counterflow can bring a fast oncoming motorcycle. End the drive from pause to review incidents.", "scene_path": "res://scenes/lessons/trailer_scenario.tscn"},
 		],
 	},
 ]
